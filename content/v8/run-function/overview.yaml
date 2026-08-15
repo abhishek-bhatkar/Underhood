@@ -1,0 +1,12 @@
+title: What happens when a JavaScript function runs?
+summary: >-
+  V8 parses add(a, b) into an AST, compiles it to compact Ignition
+  bytecode, and interprets it. As calls pile up, feedback slots record the
+  types they see — and TurboFan uses that to emit specialized machine
+  code. Call it with a string later and the guards fail: deoptimize,
+  recompile wider, carry on.
+abstraction: >-
+  Conceptual modern-V8 pipeline (Ignition → TurboFan); Sparkplug and
+  Maglev tiers, on-heap vs off-heap feedback details collapsed. V8
+  internals are version-sensitive — this models the shapes, not exact
+  bytecode or register choices.

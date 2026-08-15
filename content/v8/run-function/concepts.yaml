@@ -1,0 +1,77 @@
+concepts:
+  terminal:
+    name: Terminal (call site)
+    summary: "Where the script runs and its calls happen."
+    fields:
+      - { key: command, label: command }
+    details:
+      - "V8 executes inside Node here; in Chrome it would be a page script."
+      - "The same engine, same pipeline, different embedder."
+
+  parser:
+    name: Parser
+    summary: "Source text → AST, with lazy pre-parsing for speed."
+    details:
+      - "Tokenizes, builds the AST, reports syntax errors."
+      - "Function bodies can be pre-parsed (skipped) until first call."
+      - "The AST feeds bytecode compilation — not execution directly."
+
+  ast:
+    name: AST
+    summary: "The program's tree-shaped meaning."
+    fields:
+      - { key: nodes, label: nodes, list: true }
+    details:
+      - "FunctionDecl, params, statements, expressions."
+      - "One representation of many: source in, tree, bytecode, machine code out."
+      - "DevTools and tooling consume ASTs too — one shape, many consumers."
+
+  ignition:
+    name: "Ignition (interpreter)"
+    summary: "Register-machine bytecode interpreter — fast to start."
+    fields:
+      - { key: calls, label: call count }
+      - { key: bytecode, label: bytecode, list: true }
+    details:
+      - "Dispatches one bytecode instruction at a time via a handler table."
+      - "Bytecode is compact and compiles in milliseconds."
+      - "The fallback tier: after deopt, execution returns here."
+
+  feedback:
+    name: "Feedback vector"
+    summary: "Per-op-site record of the types actually seen."
+    fields:
+      - { key: slots, label: slots, list: true }
+    details:
+      - "Monomorphic (one type) → tightest optimized code."
+      - "Polymorphic (a few types) → guarded multi-path code."
+      - "Megamorphic (many) → stays generic; optimization gives up."
+
+  turbofan:
+    name: "TurboFan (optimizing compiler)"
+    summary: "Compiles hot functions to machine code using feedback."
+    details:
+      - "Speculates on types and inlines based on feedback and call counts."
+      - "Emits guarded fast paths — assumptions checked at run time."
+      - "Conceptual pipeline here: real V8 also has Sparkplug and Maglev tiers."
+
+  machine-code:
+    name: Machine code
+    summary: "Native instructions, installed in the code cache."
+    fields:
+      - { key: tier, label: tier }
+      - { key: code, label: code, list: true }
+    details:
+      - "Calls jump straight here once optimized — no dispatch overhead."
+      - "Guards bail to deoptimization when speculation fails."
+      - "Recompiles wider after type mixes appear."
+
+  heap:
+    name: Heap
+    summary: "GC-managed storage for objects, arrays, strings."
+    fields:
+      - { key: objects, label: objects, list: true }
+    details:
+      - "New allocations start in the young generation (scavenger GC)."
+      - "Survivors promote; long-lived objects are marked-and-swept."
+      - "Retained references prevent collection — leaks are reachable graphs."

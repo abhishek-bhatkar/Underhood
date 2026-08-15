@@ -75,7 +75,7 @@ describe('all topics content', () => {
             const state = deriveState(events, events.length - 1, scenario.components);
             expect(state.log.length).toBeGreaterThan(0);
             const statuses = Object.values(state.components).map((c) => c.status);
-            const settled = statuses.every((s) => s === 'done' || s === 'idle' || s === 'error');
+            const settled = statuses.every((s) => s === 'done' || s === 'idle' || s === 'error' || s === 'absent');
             expect(settled, `unsettled components: ${statuses.join(',')}`).toBe(true);
           });
         }

@@ -1,0 +1,526 @@
+scenarios:
+  - id: run
+    name: Run function
+    components:
+      - id: terminal
+      - id: parser
+      - id: ast
+        initial: absent
+      - id: ignition
+      - id: feedback
+        initial: absent
+      - id: turbofan
+      - id: machine-code
+        initial: absent
+      - id: heap
+        initial: absent
+    events:
+      - type: SCRIPT_LOADED
+        source: terminal
+        target: parser
+        duration: 900
+        payload:
+          command: node add.js
+        explanation:
+          title: "You run: node add.js"
+          body: >-
+            The file contains function add(a, b) { return a + b; } plus a
+            loop calling it. V8 — the engine inside Node and Chrome —
+            starts with source text and no idea what it means.
+          concept: "JavaScript arrives as text: every representation that follows is one the engine built."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: parser
+            status: active
+          - op: label
+            component: parser
+            text: "parsing add.js…"
+          - op: log
+            text: "$ node add.js"
+
+      - type: PARSED
+        source: parser
+        target: ast
+        duration: 900
+        explanation:
+          title: "Parser: source → AST"
+          body: >-
+            V8 tokenizes and parses into an abstract syntax tree — add is
+            a FunctionDecl with two parameters and a return of a
+            BinaryExpr. Pre-parsing skips function bodies not needed yet;
+            this one will be fully parsed.
+          concept: "The AST is the program's shape: everything downstream compiles from it."
+        effects:
+          - op: status
+            component: ast
+            status: active
+          - op: push
+            component: ast
+            key: nodes
+            value: { label: "FunctionDecl: add(a, b)" }
+          - op: push
+            component: ast
+            key: nodes
+            value: { label: "ReturnStatement" }
+          - op: push
+            component: ast
+            key: nodes
+            value: { label: "BinaryExpr: a + b" }
+          - op: status
+            component: parser
+            status: done
+          - op: label
+            component: parser
+            text: "AST built"
+          - op: log
+            text: "parser: add -> FunctionDecl(+)"
+
+      - type: BYTECODE_COMPILED
+        source: ast
+        target: ignition
+        duration: 900
+        explanation:
+          title: "Ignition: AST → bytecode"
+          body: >-
+            The Ignition compiler lowers the AST to bytecode — a compact
+            register-machine format. For add: load a, add b, return.
+            Bytecode compiles fast and starts running fast; nobody waits
+            for full optimization.
+          concept: "Start interpreted: bytecode is quick to produce and quick to begin executing."
+        effects:
+          - op: status
+            component: ignition
+            status: active
+          - op: push
+            component: ignition
+            key: bytecode
+            value: { label: "Ldar a1        // load a" }
+          - op: push
+            component: ignition
+            key: bytecode
+            value: { label: "Add a2, [0]    // + b, slot 0" }
+          - op: push
+            component: ignition
+            key: bytecode
+            value: { label: "Return" }
+          - op: status
+            component: ast
+            status: done
+          - op: label
+            component: ast
+            text: "compiled"
+          - op: log
+            text: "ignition: 3-byte bytecode for add"
+
+      - type: CALLED
+        source: terminal
+        target: ignition
+        duration: 800
+        explanation:
+          title: "add(2, 3) — interpreted"
+          body: >-
+            The loop calls add. Ignition walks the bytecode
+            instruction-by-instruction, dispatching through a handler
+            table. Correct immediately — and never the fastest way.
+          concept: "The interpreter trades speed for flexibility: every operation can still be anything."
+        effects:
+          - op: set
+            component: ignition
+            data: { calls: 1 }
+          - op: label
+            component: ignition
+            text: "interpreting add(2, 3)"
+          - op: log
+            text: "add(2, 3) -> 5 (interpreted)"
+
+      - type: FEEDBACK_COLLECTED
+        source: ignition
+        target: feedback
+        duration: 900
+        explanation:
+          title: "Feedback slot: a is Smi, b is Smi"
+          body: >-
+            Every operation site (like the Add at slot 0) keeps a feedback
+            vector recording what it actually saw: both operands are Smis —
+            small integers stored unboxed. This is the raw material of
+            optimization.
+          concept: "Runtime feedback turns dynamic JavaScript into observed, optimizable patterns."
+        effects:
+          - op: status
+            component: feedback
+            status: active
+          - op: push
+            component: feedback
+            key: slots
+            value: { label: "slot 0 [Add]: a=Smi, b=Smi" }
+          - op: label
+            component: feedback
+            text: "monomorphic: Smi + Smi"
+          - op: log
+            text: "feedback: slot 0 -> Smi,Smi"
+
+      - type: HEAP_ALLOCATED
+        source: ignition
+        target: heap
+        duration: 800
+        explanation:
+          title: "The array in the script lands on the heap"
+          body: >-
+            The script's `let xs = [1, 2, 3]` allocates a JSArray on the
+            managed heap. Objects, arrays, strings live there; the garbage
+            collector frees whatever stops being reachable.
+          concept: "Values small enough stay in registers; objects live on the GC-managed heap."
+        effects:
+          - op: status
+            component: heap
+            status: active
+          - op: push
+            component: heap
+            key: objects
+            value: { label: "JSArray xs = [1,2,3]" }
+          - op: label
+            component: heap
+            text: "young generation"
+          - op: log
+            text: "heap: allocated xs"
+
+      - type: HOT
+        source: ignition
+        target: ignition
+        duration: 800
+        explanation:
+          title: "…10,000 calls later: add is hot"
+          body: >-
+            The loop keeps calling add. Each call ticks the interpreter's
+            budget counters until add crosses the hot threshold and is
+            queued for optimizing compilation.
+          concept: "Hotness is measured, not guessed: budgets decide what deserves machine code."
+        effects:
+          - op: set
+            component: ignition
+            data: { calls: 10000 }
+          - op: label
+            component: ignition
+            text: "10k calls — budget spent"
+          - op: log
+            text: "add is hot after ~10k invocations"
+
+      - type: TIER_UP
+        source: feedback
+        target: turbofan
+        duration: 900
+        explanation:
+          title: "TurboFan compiles with the feedback"
+          body: >-
+            TurboFan takes the bytecode plus the feedback vector and
+            speculates: "Add here is Smi + Smi." It emits machine code
+            with a guard that checks the assumption — fast path, cheap
+            check.
+          concept: "Optimization is speculation with guards: fast if assumptions hold, safe when they don't."
+        effects:
+          - op: status
+            component: turbofan
+            status: active
+          - op: label
+            component: turbofan
+            text: "compiling add (Smi+Smi)"
+          - op: log
+            text: "turbofan: optimizing add"
+
+      - type: COMPILED
+        source: turbofan
+        target: machine-code
+        duration: 900
+        explanation:
+          title: "Machine code installed"
+          body: >-
+            The optimized code lands in the code cache and future calls
+            jump straight to it: load two registers, one add instruction,
+            a guard, return. The interpreter is out of the loop
+            entirely.
+          concept: "Same function, new representation: optimized calls skip interpretation altogether."
+        effects:
+          - op: status
+            component: machine-code
+            status: active
+          - op: push
+            component: machine-code
+            key: code
+            value: { label: "mov eax, [a]; add eax, [b]; ret" }
+          - op: set
+            component: machine-code
+            data: { tier: TurboFan }
+          - op: label
+            component: machine-code
+            text: "optimized code installed"
+          - op: log
+            text: "turbofan: machine code installed"
+
+      - type: RUNNING_NATIVE
+        source: machine-code
+        target: terminal
+        duration: 800
+        explanation:
+          title: "add(2, 3) — native speed"
+          body: >-
+            Subsequent calls run in a handful of nanoseconds. The tiering
+            ladder did its job: fast start via bytecode, fast steady state
+            via speculation. Until, that is, the assumptions break — see
+            the deopt scenario.
+          concept: "Tiering = start fast, get fast: bytecode now, machine code when it pays."
+        effects:
+          - op: status
+            component: machine-code
+            status: done
+          - op: status
+            component: turbofan
+            status: done
+          - op: status
+            component: ignition
+            status: done
+          - op: status
+            component: feedback
+            status: done
+          - op: status
+            component: heap
+            status: done
+          - op: label
+            component: terminal
+            text: "add(2,3) -> 5, natively"
+          - op: log
+            text: "add(2, 3) -> 5 (TurboFan)"
+
+  - id: deopt
+    name: Deoptimization
+    components:
+      - id: terminal
+      - id: parser
+      - id: ast
+        initial: absent
+      - id: ignition
+      - id: feedback
+        initial: absent
+      - id: turbofan
+      - id: machine-code
+        initial: absent
+      - id: heap
+        initial: absent
+    events:
+      - type: SCRIPT_LOADED
+        source: terminal
+        target: parser
+        duration: 900
+        payload:
+          command: node add.js
+        explanation:
+          title: "Fast-forward: add is optimized"
+          body: >-
+            Same script — but the loop that heats add up is compressed:
+            by now, add has Smi feedback and TurboFan machine code
+            installed.
+          concept: "Deopt stories start at maximum speed."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: parser
+            status: done
+          - op: label
+            component: terminal
+            text: parsed
+          - op: status
+            component: ast
+            status: done
+          - op: push
+            component: ast
+            key: nodes
+            value: { label: "FunctionDecl: add(a, b)" }
+          - op: status
+            component: ignition
+            status: done
+          - op: push
+            component: ignition
+            key: bytecode
+            value: { label: "Ldar a1 / Add a2 / Return" }
+          - op: label
+            component: ignition
+            text: "bytecode on standby"
+          - op: log
+            text: "add parsed + compiled to bytecode"
+
+      - type: HOT_LOOP
+        source: ignition
+        target: feedback
+        duration: 900
+        explanation:
+          title: "10,000 calls: Smi feedback accumulates"
+          body: >-
+            The loop runs, Ignition interprets, and the feedback vector
+            records only Smis. add crosses the hot threshold — and with
+            clean monomorphic feedback, TurboFan compiles it tight.
+          concept: "Monomorphic feedback is the best case: one type seen, one fast path emitted."
+        effects:
+          - op: set
+            component: ignition
+            data: { calls: 10000 }
+          - op: status
+            component: feedback
+            status: done
+          - op: push
+            component: feedback
+            key: slots
+            value: { label: "slot 0 [Add]: a=Smi, b=Smi" }
+          - op: label
+            component: feedback
+            text: "monomorphic: Smi + Smi"
+          - op: status
+            component: heap
+            status: done
+          - op: push
+            component: heap
+            key: objects
+            value: { label: "JSArray xs = [1,2,3]" }
+          - op: log
+            text: "add is hot; feedback says Smi+Smi"
+
+      - type: OPTIMIZED
+        source: feedback
+        target: turbofan
+        duration: 900
+        explanation:
+          title: "TurboFan installs Smi+Smi machine code"
+          body: >-
+            Speculating on the feedback, TurboFan emits a tight fast path —
+            two loads, one add, a guard — and swaps it in for future calls.
+            This is the peak the incoming string is about to spoil.
+          concept: "Optimized code is guarded speculation: type changes are detected, not catastrophic."
+        effects:
+          - op: status
+            component: turbofan
+            status: done
+          - op: status
+            component: machine-code
+            status: active
+          - op: push
+            component: machine-code
+            key: code
+            value: { label: "mov eax, [a]; add eax, [b]; ret" }
+          - op: set
+            component: machine-code
+            data: { tier: TurboFan }
+          - op: label
+            component: machine-code
+            text: "optimized code running"
+          - op: log
+            text: "add optimized (Smi + Smi)"
+
+      - type: TYPE_CHANGE
+        source: machine-code
+        target: feedback
+        duration: 900
+        explanation:
+          title: "add('2', 3) — a string appears"
+          body: >-
+            Somewhere the script calls add with a string. Execution lands
+            in the optimized code and immediately hits the guard: this
+            operand is not a Smi. The assumption is now false — and that
+            is a normal, expected event.
+          concept: "Optimized code is guarded speculation: type changes are detected, not catastrophic."
+        effects:
+          - op: push
+            component: feedback
+            key: slots
+            value: { label: "slot 0 [Add]: a=String!" }
+          - op: label
+            component: feedback
+            text: "polymorphic: Smi | String"
+          - op: label
+            component: machine-code
+            text: "guard failed: not Smi"
+          - op: log
+            text: "add('2', 3) — map check failed"
+
+      - type: DEOPTIMIZED
+        source: machine-code
+        target: ignition
+        duration: 900
+        explanation:
+          title: "Deoptimize: back to the interpreter"
+          body: >-
+            V8 throws away the optimized frame and rebuilds an interpreter
+            frame exactly where the failing operation was — the program
+            never notices. The call completes via the bytecode's generic
+            Add, which handles strings ('2' + 3 → '23').
+          concept: "Deopt is correct-by-construction: guards make wrong speculation safe."
+        effects:
+          - op: status
+            component: machine-code
+            status: error
+          - op: label
+            component: machine-code
+            text: "deoptimized (guards failed)"
+          - op: status
+            component: ignition
+            status: active
+          - op: label
+            component: ignition
+            text: "interpreting add('2', 3)"
+          - op: log
+            text: "deopt: add -> bytecode, result '23'"
+
+      - type: REOPTIMIZED
+        source: feedback
+        target: turbofan
+        duration: 900
+        explanation:
+          title: "Re-optimized — wider this time"
+          body: >-
+            With polymorphic feedback (Smi or String), TurboFan eventually
+            recompiles: the new code checks which type arrived and runs
+            the matching path. Slower than the narrow version, far faster
+            than always interpreting.
+          concept: "Engines converge: repeated type mixes produce polymorphic code instead of repeated deopts."
+        effects:
+          - op: status
+            component: turbofan
+            status: active
+          - op: label
+            component: turbofan
+            text: "recompiling (polymorphic)"
+          - op: push
+            component: machine-code
+            key: code
+            value: { label: "if (isSmi(a)) … else … // generic add" }
+          - op: status
+            component: machine-code
+            status: done
+          - op: set
+            component: machine-code
+            data: { tier: "TurboFan (poly)" }
+          - op: label
+            component: machine-code
+            text: "polymorphic code installed"
+          - op: status
+            component: turbofan
+            status: done
+          - op: status
+            component: ignition
+            status: done
+          - op: status
+            component: feedback
+            status: done
+          - op: label
+            component: terminal
+            text: "stable again"
+          - op: log
+            text: "re-optimized with Smi|String handling"

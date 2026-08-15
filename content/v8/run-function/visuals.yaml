@@ -1,0 +1,122 @@
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: to-parser, type: source, pos: right, offset: "25%" }
+      - { id: to-ignition, type: source, pos: right, offset: "75%" }
+      - { id: result, type: target, pos: bottom }
+
+  - id: parser
+    kind: panel
+    label: Parser
+    position: { x: 320, y: 0 }
+    size: { w: 230, h: 175 }
+    lines:
+      - "source -> tokens -> AST"
+      - lazy pre-parsing
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: ast
+    kind: list
+    label: AST
+    position: { x: 620, y: 0 }
+    size: { w: 250, h: 175 }
+    key: nodes
+    emptyLabel: "empty — nothing parsed"
+    itemTemplate: "$value.label"
+    absentLabel: "built by the parser"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: bottom }
+
+  - id: heap
+    kind: list
+    label: Heap
+    position: { x: 930, y: 0 }
+    size: { w: 230, h: 175 }
+    key: objects
+    emptyLabel: "no allocations yet"
+    itemTemplate: "$value.label"
+    absentLabel: "fills as objects appear"
+    handles:
+      - { id: in, type: target, pos: top, offset: "75%" }
+
+  - id: isolate
+    kind: group
+    label: "V8 Isolate"
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: ignition
+    kind: list
+    label: Ignition
+    parent: isolate
+    position: { x: 30, y: 60 }
+    size: { w: 300, h: 200 }
+    key: bytecode
+    emptyLabel: "no bytecode yet"
+    itemTemplate: "$value.label"
+    chips:
+      - { key: calls, text: "$value calls", variant: net }
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: to-feedback, type: source, pos: right }
+      - { id: to-heap, type: source, pos: bottom }
+
+  - id: feedback
+    kind: list
+    label: Feedback vector
+    parent: isolate
+    position: { x: 390, y: 60 }
+    size: { w: 300, h: 200 }
+    key: slots
+    emptyLabel: "no feedback yet"
+    itemTemplate: "$value.label"
+    absentLabel: "grows with execution"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-turbofan, type: source, pos: right }
+
+  - id: turbofan
+    kind: panel
+    label: TurboFan
+    parent: isolate
+    position: { x: 750, y: 60 }
+    size: { w: 190, h: 200 }
+    lines:
+      - "speculative optimizing"
+      - "guarded fast paths"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: machine-code
+    kind: list
+    label: Machine code
+    parent: isolate
+    position: { x: 30, y: 290 }
+    size: { w: 460, h: 120 }
+    key: code
+    emptyLabel: "not compiled yet"
+    itemTemplate: "$value.label"
+    absentLabel: "installed after optimization"
+    chips:
+      - { key: tier, text: "$value", variant: on }
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: top, offset: "80%" }
+
+edges:
+  - { source: terminal, from: to-parser, target: parser, to: in }
+  - { source: parser, from: out, target: ast, to: in }
+  - { source: ast, from: out, target: ignition, to: in }
+  - { source: terminal, from: to-ignition, target: ignition, to: in }
+  - { source: ignition, from: to-feedback, target: feedback, to: in }
+  - { source: ignition, from: to-heap, target: heap, to: in }
+  - { source: feedback, from: to-turbofan, target: turbofan, to: in }
+  - { source: turbofan, from: out, target: machine-code, to: in }
+  - { source: machine-code, from: out, target: terminal, to: result }
