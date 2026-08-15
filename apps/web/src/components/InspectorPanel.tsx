@@ -3,61 +3,36 @@ import type { ComponentRuntime, ConceptDef } from '@underhood/simulation-engine'
 interface InspectorPanelProps {
   componentId: string;
   concept: ConceptDef;
-  runtime: ComponentRuntime;
+  runtime: ComponentRuntime | undefined;
   onClose: () => void;
 }
 
-/** Per-component live state, keyed by component id. */
-function liveRows(
-  id: string,
-  data: Record<string, unknown>,
-  runtime: ComponentRuntime,
-): { k: string; v: string; cls?: string }[] {
-  switch (id) {
-    case 'terminal':
-      return [{ k: 'command', v: (data.command as string) ?? '—', cls: 'work' }];
-    case 'cli':
-      return [
-        { k: 'role', v: 'client' },
-        { k: 'phase', v: runtime.label ?? 'idle' },
-      ];
-    case 'daemon':
-      return [
-        { k: 'api', v: 'unix:///var/run/docker.sock' },
-        { k: 'phase', v: runtime.label ?? 'idle' },
-      ];
-    case 'registry':
-      return [
-        { k: 'host', v: 'registry-1.docker.io' },
-        { k: 'state', v: runtimeLabel(runtime) },
-      ];
-    case 'image-store': {
-      const layers = (data.layers as unknown[]) ?? [];
-      return [
-        { k: 'layers pulled', v: `${layers.length} / 4` },
-        { k: 'image', v: layers.length === 4 ? 'nginx:latest ✓' : 'incomplete' },
-      ];
-    }
-    case 'container':
-      return [
-        { k: 'id', v: (data.containerId as string) ?? '—' },
-        { k: 'network', v: (data.network as string) ?? '—' },
-        { k: 'ip', v: (data.ip as string) ?? '—' },
-        { k: 'pid', v: data.pid ? String(data.pid) : '—' },
-        { k: 'process', v: (data.process as string) ?? '—' },
-        { k: 'status', v: data.running ? 'running' : (data.containerId ? 'created' : 'absent'), cls: data.running ? 'on' : undefined },
-      ];
-    default:
-      return [];
-  }
-}
-
-function runtimeLabel(runtime: ComponentRuntime): string {
-  return runtime.status;
-}
-
+/** Inspect a component: concept content plus live state from its data. */
 export function InspectorPanel({ componentId, concept, runtime, onClose }: InspectorPanelProps) {
-  const rows = liveRows(componentId, runtime.data, runtime);
+  const rows: { k: string; v: string; cls?: string }[] = [
+    {
+      k: 'status',
+      v: runtime?.status ?? '—',
+      cls:
+        runtime?.status === 'error'
+          ? 'err'
+          : runtime?.status === 'done'
+            ? 'on'
+            : runtime?.status === 'active'
+              ? 'work'
+              : undefined,
+    },
+    ...(concept.fields ?? []).map((field) => {
+      const value = runtime?.data[field.key];
+      if (field.list) {
+        return { k: field.label, v: Array.isArray(value) ? String(value.length) : '0' };
+      }
+      if (value === undefined || value === null || value === '') return { k: field.label, v: '—' };
+      if (value === true) return { k: field.label, v: 'yes', cls: 'on' };
+      return { k: field.label, v: String(value) };
+    }),
+  ];
+
   return (
     <section className="rail-section" aria-label={`Inspect ${concept.name}`}>
       <div className="inspector-head">
@@ -80,6 +55,7 @@ export function InspectorPanel({ componentId, concept, runtime, onClose }: Inspe
           </div>
         ))}
       </div>
+      {componentId ? null : null}
     </section>
   );
 }

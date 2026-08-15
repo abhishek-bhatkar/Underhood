@@ -11,126 +11,69 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import type { SimulationEvent, SimulationState } from '@underhood/simulation-engine';
+import type { VisualsDef } from '../content/visuals';
 import { TerminalNode } from './nodes/TerminalNode';
-import { CliNode } from './nodes/CliNode';
-import { DaemonNode } from './nodes/DaemonNode';
-import { RegistryNode } from './nodes/RegistryNode';
-import { ImageStoreNode } from './nodes/ImageStoreNode';
-import { ContainerNode } from './nodes/ContainerNode';
-import { DockerHostGroup } from './nodes/DockerHostGroup';
-import type { HostGroupData, SimNodeData } from './nodes/shared';
+import { PanelNode } from './nodes/PanelNode';
+import { StackNode } from './nodes/StackNode';
+import { ListNode } from './nodes/ListNode';
+import { GroupNode } from './nodes/GroupNode';
+import type { SimNodeData } from './nodes/shared';
 
 const nodeTypes: NodeTypes = {
   terminal: TerminalNode,
-  cli: CliNode,
-  daemon: DaemonNode,
-  registry: RegistryNode,
-  'image-store': ImageStoreNode,
-  container: ContainerNode,
-  'host-group': DockerHostGroup,
+  panel: PanelNode,
+  stack: StackNode,
+  list: ListNode,
+  group: GroupNode,
 };
 
-/** Static edge definitions; ids map component pairs for activity matching. */
-const EDGE_DEFS: { id: string; source: string; sourceHandle: string; target: string; targetHandle: string }[] = [
-  { id: 'terminal-cli', source: 'terminal', sourceHandle: 'out', target: 'cli', targetHandle: 'in' },
-  { id: 'cli-daemon', source: 'cli', sourceHandle: 'out', target: 'daemon', targetHandle: 'in' },
-  { id: 'daemon-registry', source: 'daemon', sourceHandle: 'to-registry', target: 'registry', targetHandle: 'in' },
-  { id: 'registry-store', source: 'registry', sourceHandle: 'out', target: 'image-store', targetHandle: 'from-registry' },
-  { id: 'daemon-store', source: 'daemon', sourceHandle: 'to-store', target: 'image-store', targetHandle: 'from-daemon' },
-  { id: 'daemon-container', source: 'daemon', sourceHandle: 'to-container', target: 'container', targetHandle: 'in' },
-];
-
 interface CanvasProps {
+  visuals: VisualsDef;
   state: SimulationState;
   currentEvent: SimulationEvent | null;
   selected: string | null;
   onSelect: (id: string | null) => void;
 }
 
-export function Canvas({ state, currentEvent, selected, onSelect }: CanvasProps) {
-  const nodes = useMemo<Node<SimNodeData | HostGroupData>[]>(() => {
-    const sim = (id: string) => state.components[id];
-    const simData = (id: string, extra: Record<string, unknown> = {}): SimNodeData => ({
-      runtime: sim(id),
-      selected: selected === id,
-      ...extra,
-    });
-    return [
-      {
-        id: 'terminal',
-        type: 'terminal',
-        position: { x: 0, y: 0 },
-        style: { width: 250, height: 175 },
-        data: { ...simData('terminal', { log: state.log.map((l) => l.text) }) },
+/**
+ * Generic graph renderer: node positions, kinds, and edges all come from the
+ * experience's visuals.yaml — no topic-specific code lives here.
+ */
+export function Canvas({ visuals, state, currentEvent, selected, onSelect }: CanvasProps) {
+  const nodes = useMemo<Node<SimNodeData>[]>(
+    () =>
+      visuals.nodes.map((config) => ({
+        id: config.id,
+        type: config.kind,
+        position: config.position,
+        style: { width: config.size.w, height: config.size.h },
+        data: {
+          runtime: state.components[config.id],
+          selected: selected === config.id,
+          config,
+          log: config.kind === 'terminal' ? state.log.map((l) => l.text) : undefined,
+        },
+        parentId: config.parent,
+        extent: config.parent ? ('parent' as const) : undefined,
         draggable: false,
-      },
-      {
-        id: 'cli',
-        type: 'cli',
-        position: { x: 300, y: 10 },
-        style: { width: 230, height: 150 },
-        data: simData('cli'),
-        draggable: false,
-      },
-      {
-        id: 'registry',
-        type: 'registry',
-        position: { x: 900, y: 0 },
-        style: { width: 270, height: 160 },
-        data: simData('registry'),
-        draggable: false,
-      },
-      {
-        id: 'docker-host',
-        type: 'host-group',
-        position: { x: 0, y: 230 },
-        style: { width: 1160, height: 440 },
-        data: { label: 'Docker Host' } as HostGroupData,
-        draggable: false,
-        selectable: false,
-      },
-      {
-        id: 'daemon',
-        type: 'daemon',
-        position: { x: 40, y: 60 },
-        style: { width: 270, height: 200 },
-        data: simData('daemon'),
-        parentId: 'docker-host',
-        extent: 'parent',
-        draggable: false,
-      },
-      {
-        id: 'image-store',
-        type: 'image-store',
-        position: { x: 380, y: 70 },
-        style: { width: 310, height: 320 },
-        data: simData('image-store'),
-        parentId: 'docker-host',
-        extent: 'parent',
-        draggable: false,
-      },
-      {
-        id: 'container',
-        type: 'container',
-        position: { x: 790, y: 60 },
-        style: { width: 330, height: 340 },
-        data: simData('container'),
-        parentId: 'docker-host',
-        extent: 'parent',
-        draggable: false,
-      },
-    ];
-  }, [state, selected]);
+        selectable: config.kind !== 'group',
+      })),
+    [visuals, state, selected],
+  );
 
   const edges = useMemo<Edge[]>(() => {
     const activeId =
       currentEvent && currentEvent.source && currentEvent.target
         ? `${currentEvent.source}-${currentEvent.target}`
         : null;
-    return EDGE_DEFS.map((def) => {
-      const isActive = def.id === activeId;
+    return visuals.edges.map((e) => {
+      const isActive = `${e.source}-${e.target}` === activeId;
       return {
-        ...def,
+        id: `${e.source}-${e.from}-${e.target}-${e.to}`,
+        source: e.source,
+        sourceHandle: e.from,
+        target: e.target,
+        targetHandle: e.to,
         animated: isActive,
         className: isActive ? 'active' : undefined,
         type: 'smoothstep',
@@ -143,7 +86,7 @@ export function Canvas({ state, currentEvent, selected, onSelect }: CanvasProps)
         },
       };
     });
-  }, [currentEvent]);
+  }, [visuals, currentEvent]);
 
   return (
     <div className="rf-wrap">
@@ -151,7 +94,7 @@ export function Canvas({ state, currentEvent, selected, onSelect }: CanvasProps)
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
-        onNodeClick={(_, node) => onSelect(node.id === 'docker-host' ? null : node.id)}
+        onNodeClick={(_, node) => onSelect(node.type === 'group' ? null : node.id)}
         onPaneClick={() => onSelect(null)}
         fitView
         fitViewOptions={{ padding: 0.12, maxZoom: 1 }}

@@ -19,7 +19,10 @@ export interface UseSimulation {
  */
 export function useSimulation(scenario: ScenarioDef): UseSimulation {
   const events = useMemo(() => materializeEvents(scenario), [scenario]);
-  const player = useMemo(() => new SimulationPlayer(events), [events]);
+  const player = useMemo(
+    () => new SimulationPlayer(events, scenario.components ?? []),
+    [events, scenario],
+  );
 
   useEffect(() => () => player.destroy(), [player]);
 

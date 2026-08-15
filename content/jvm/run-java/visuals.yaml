@@ -1,0 +1,123 @@
+# Visual layout for the JVM run-java experience.
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: to-javac, type: source, pos: right, offset: "25%" }
+      - { id: to-engine, type: source, pos: right, offset: "75%" }
+
+  - id: javac
+    kind: panel
+    label: javac
+    position: { x: 300, y: 10 }
+    size: { w: 230, h: 150 }
+    lines:
+      - Java compiler
+      - "Hello.java -> Hello.class"
+      - type-check · emit bytecode
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: classfile
+    kind: list
+    label: Hello.class
+    position: { x: 600, y: 10 }
+    size: { w: 270, h: 180 }
+    key: entries
+    emptyLabel: "no bytecode yet — compile first"
+    itemTemplate: "$value.label"
+    absentLabel: "no bytecode yet — compile first"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: bottom }
+
+  - id: jvm
+    kind: group
+    label: JVM
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: engine
+    kind: panel
+    label: Execution Engine
+    parent: jvm
+    position: { x: 40, y: 60 }
+    size: { w: 260, h: 200 }
+    lines:
+      - interpreter
+      - "bytecode by bytecode"
+      - "JIT: C1 -> C2 tiers"
+    chips:
+      - { key: jit, text: "JIT: $value", variant: on }
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-classloader, type: source, pos: right, offset: "25%" }
+      - { id: to-heap, type: source, pos: bottom, offset: "30%" }
+      - { id: to-stack, type: source, pos: bottom, offset: "70%" }
+
+  - id: classloader
+    kind: panel
+    label: Classloaders
+    parent: jvm
+    position: { x: 360, y: 60 }
+    size: { w: 290, h: 200 }
+    lines:
+      - "Application (your classpath)"
+      - "delegates -> Platform"
+      - "delegates -> Bootstrap (core)"
+      - "verify · prepare · initialize"
+    handles:
+      - { id: from-classfile, type: target, pos: top }
+      - { id: from-engine, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: method-area
+    kind: list
+    label: Method area
+    parent: jvm
+    position: { x: 720, y: 50 }
+    size: { w: 220, h: 160 }
+    key: classes
+    emptyLabel: "empty — classes load on demand"
+    itemTemplate: "$value.label"
+    absentLabel: "allocated at JVM startup"
+    handles:
+      - { id: in, type: target, pos: left }
+
+  - id: heap
+    kind: list
+    label: Heap
+    parent: jvm
+    position: { x: 720, y: 250 }
+    size: { w: 220, h: 160 }
+    key: objects
+    emptyLabel: "no objects yet"
+    itemTemplate: "$value.label"
+    absentLabel: "allocated at JVM startup"
+    handles:
+      - { id: in, type: target, pos: top }
+
+  - id: stack
+    kind: stack
+    label: Thread stack
+    parent: jvm
+    position: { x: 970, y: 50 }
+    size: { w: 170, h: 360 }
+    key: frames
+    emptyLabel: "— no frames —"
+    itemTemplate: "$value.label"
+    absentLabel: "allocated at JVM startup"
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: terminal, from: to-javac, target: javac, to: in }
+  - { source: javac, from: out, target: classfile, to: in }
+  - { source: terminal, from: to-engine, target: engine, to: in }
+  - { source: classfile, from: out, target: classloader, to: from-classfile }
+  - { source: engine, from: to-classloader, target: classloader, to: from-engine }
+  - { source: engine, from: to-heap, target: heap, to: in }
+  - { source: engine, from: to-stack, target: stack, to: in }

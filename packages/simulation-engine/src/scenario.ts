@@ -76,6 +76,7 @@ const conceptsFileSchema = z.object({
 const overviewFileSchema = z.object({
   title: z.string().min(1),
   summary: z.string().min(1),
+  abstraction: z.string().optional(),
 });
 
 export interface EventDef {
@@ -111,6 +112,8 @@ export interface ConceptDef {
 export interface OverviewDef {
   title: string;
   summary: string;
+  /** Labels the educational simplifications assumed (spec: technical accuracy). */
+  abstraction?: string;
 }
 
 function parse<T>(text: string, schema: z.ZodType<T>, what: string): T {
