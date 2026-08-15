@@ -2,14 +2,22 @@ import { useState } from 'react';
 import { loadDockerRunContent } from './content/loader';
 import { useSimulation } from './simulation/useSimulation';
 import { Canvas } from './components/Canvas';
+import { ControlsBar } from './components/ControlsBar';
+import { ExplanationPanel } from './components/ExplanationPanel';
+import { Timeline } from './components/Timeline';
 
 const content = loadDockerRunContent();
 
 export default function App() {
   const [scenarioId, setScenarioId] = useState<'pull' | 'cached'>('pull');
   const [selected, setSelected] = useState<string | null>(null);
-  const { snapshot, events } = useSimulation(content.scenarios[scenarioId]);
+  const { snapshot, player, events } = useSimulation(content.scenarios[scenarioId]);
   const currentEvent = snapshot.currentStep >= 0 ? events[snapshot.currentStep] : null;
+
+  const switchScenario = (id: 'pull' | 'cached') => {
+    setScenarioId(id);
+    setSelected(null);
+  };
 
   return (
     <div className="app">
@@ -20,10 +28,10 @@ export default function App() {
         </h1>
         <span className="spacer" />
         <div className="scenario-toggle" role="group" aria-label="Scenario">
-          <button aria-pressed={scenarioId === 'pull'} onClick={() => setScenarioId('pull')}>
+          <button aria-pressed={scenarioId === 'pull'} onClick={() => switchScenario('pull')}>
             Pull image
           </button>
-          <button aria-pressed={scenarioId === 'cached'} onClick={() => setScenarioId('cached')}>
+          <button aria-pressed={scenarioId === 'cached'} onClick={() => switchScenario('cached')}>
             Image cached
           </button>
         </div>
@@ -38,11 +46,22 @@ export default function App() {
           />
         </div>
         <aside className="app-rail">
-          <section className="rail-section">
-            <p className="now-empty">Transport controls arrive next.</p>
-          </section>
+          <ExplanationPanel
+            currentEvent={currentEvent}
+            currentStep={snapshot.currentStep}
+            totalSteps={events.length}
+          />
         </aside>
       </div>
+      <footer className="app-transport">
+        <ControlsBar snapshot={snapshot} player={player} totalSteps={events.length} />
+        <Timeline
+          events={events}
+          log={snapshot.state.log}
+          currentStep={snapshot.currentStep}
+          player={player}
+        />
+      </footer>
     </div>
   );
 }
