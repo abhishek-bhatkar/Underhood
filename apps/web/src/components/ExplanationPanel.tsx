@@ -13,7 +13,7 @@ export function ExplanationPanel({ currentEvent, currentStep, totalSteps }: Expl
       <section className="rail-section">
         <p className="rail-eyebrow">Now</p>
         <p className="now-empty">
-          Press play — or step through — to watch the command travel through Docker.
+          Press play — or step through — to watch each event change the system.
         </p>
       </section>
     );

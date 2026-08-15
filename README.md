@@ -4,13 +4,20 @@ A visual learning engine for understanding how technical systems actually work.
 
 > **Don't just read how it works. Watch it work.**
 
-The first experience explains **what happens when you run `docker run nginx`**:
-the command travels from the CLI to the daemon, the image is found (or pulled
-layer by layer from a registry), a container is assembled around it — writable
-layer, bridge network, PID 1 — and nginx comes up. Every step is an event in a
-deterministic simulation you can play, pause, scrub, and inspect.
+One engine, many systems. Each topic is **content** — components, event
+sequences, and explanations as validated YAML — rendered by the same
+simulation engine and UI.
+
+Current experiences:
+
+- **Docker** — [what happens when you run `docker run nginx`?](https://abhishek-bhatkar.github.io/Underhood/#/docker/docker-run)
+  pull vs cached scenarios: CLI → daemon → registry → layers → container.
+- **JVM** — [what happens when you run a Java program?](https://abhishek-bhatkar.github.io/Underhood/#/jvm/run-java)
+  run + stack-overflow scenarios: javac → classloading → runtime areas →
+  execution, frames, heap, JIT.
 
 Full product vision: [`spec/visual-technical-systems-plan.md`](spec/visual-technical-systems-plan.md).
+Topic specs live next to it (`spec/05-jvm.md`, …).
 
 ## Run it
 
@@ -24,51 +31,64 @@ npm run dev        # http://localhost:5173
 Other commands:
 
 ```bash
-npm test           # simulation-engine unit tests (fold, player, content schema)
-npm run test:web   # web integration tests (controls, timeline, inspector)
+npm test           # simulation-engine unit tests (fold, player, content)
+npm run test:web   # web tests (registry, routing, interactions)
 npm run build      # production build of the web app
 ```
 
 ## Try this
 
-1. Press **play** and watch `docker run nginx` travel through the system.
-2. **Step** through the 15 events one at a time; the right panel explains each.
-3. **Click any component** (CLI, daemon, registry, image store, container) to
-   inspect it — including its live state as the simulation progresses.
-4. Switch to the **Image cached** scenario and watch the pull phase vanish.
+1. From the home page, open an experience and press **play**.
+2. **Step** through events one at a time; the right panel explains each.
+3. **Click any component** to inspect it — including live state as the
+   simulation progresses.
+4. Switch **scenarios** (Pull image vs Image cached, Run program vs Stack
+   overflow) and watch the same machinery take a different path.
 5. Scrub the **timeline** at the bottom to jump to any event.
 
 ## Architecture
 
 Simulation first, animation second. State and events are the source of truth;
-renderers derive everything from them.
+renderers derive everything from them. Adding a topic is a content directory,
+not a code change.
 
 ```text
-content/docker/docker-run/*.yaml        structured, validated content (zod)
-        |
-packages/simulation-engine              framework-agnostic TypeScript
-        |--- types + fold               event-sourced state (rewind is free)
-        |--- player                     play/pause/step/seek/speed
-        |--- scenario                   YAML schemas + event materializer
-        |
+content/<topic>/<experience>/
+  topic.yaml (per topic)   name + description
+  overview.yaml            title + summary (+ abstraction labelling)
+  simulation.yaml          components + scenarios + events with declarative
+                           `effects` (status/label/set/push/pop/remove/log,
+                           `$payload.x` templates)
+  concepts.yaml            component inspection content + live-state fields
+  visuals.yaml             canvas: node kinds, positions, edges, chips
+
+packages/simulation-engine      framework-agnostic TypeScript
+  types + fold                  effect interpreter, event-sourced state
+  player                        play/pause/step/seek/speed
+  scenario                      zod schemas + YAML parsing
+
 apps/web (React + Vite + React Flow)
-        |--- content/loader             parses + validates bundled YAML
-        |--- simulation/useSimulation   binds the player via useSyncExternalStore
-        |--- components/Canvas          node graph derived from SimulationState
-        |--- controls, timeline, panels HTML/CSS
+  content/registry              discovers content/ via import.meta.glob
+  content/visuals               visuals schema
+  components/Canvas             generic graph renderer, node kinds:
+                                terminal · panel · stack · list · group
+  hash routing                  #/ = topic index, #/<topic>/<experience>
 ```
 
 Engineering principles (from the spec): deterministic simulations, renderer
-separate from content, no premature backend/AI/3D, content as data.
+separate from content, no premature backend/AI/3D, content as data. The
+Phase 9 test passed: JVM landed with **zero engine/UI code changes** — only
+new YAML plus the visuals schema the generalization introduced.
 
-## Adding content
+## Adding a topic
 
-The Docker explanation lives in YAML, not component code:
+1. Create `content/<topic>/topic.yaml` (`name`, `description`).
+2. Create `content/<topic>/<experience>/` with the four files above.
+3. That's it — the registry discovers it, the home page lists it, and the
+   hash route `#/<topic>/<experience>` works. Validation is loud: malformed
+   content fails at load time with the file and field named, and engine
+   tests in `packages/simulation-engine/src/__tests__/content.test.ts` guard
+   the real files.
 
-- `content/docker/docker-run/simulation.yaml` — event sequences per scenario
-- `content/docker/docker-run/concepts.yaml` — component inspection content
-- `content/docker/docker-run/overview.yaml` — title and summary
-
-The engine validates all of it at load time (`packages/simulation-engine/src/scenario.ts`),
-so malformed content fails loudly. Tests in
-`packages/simulation-engine/src/__tests__/content.test.ts` guard the real files.
+Deploy: pushing to `main` builds and publishes to GitHub Pages via
+`.github/workflows/deploy.yml`.
