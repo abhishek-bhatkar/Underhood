@@ -1,0 +1,83 @@
+nodes:
+  - id: browser
+    kind: terminal
+    label: Browser
+    position: { x: 0, y: 60 }
+    size: { w: 250, h: 190 }
+    handles:
+      - { id: to-dns, type: source, pos: right, offset: "25%" }
+      - { id: from-dns, type: target, pos: right, offset: "75%" }
+      - { id: from-server, type: target, pos: bottom }
+
+  - id: dns
+    kind: panel
+    label: DNS
+    position: { x: 320, y: 0 }
+    size: { w: 250, h: 160 }
+    lines:
+      - "stub -> recursive"
+      - "root -> .com -> auth"
+      - "answers cached (TTL)"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: left, offset: "75%" }
+
+  - id: tcp
+    kind: panel
+    label: TCP
+    position: { x: 640, y: 0 }
+    size: { w: 240, h: 160 }
+    lines:
+      - "SYN · SYN-ACK · ACK"
+      - "reliable ordered stream"
+    chips:
+      - { key: state, text: "$value", variant: net }
+    handles:
+      - { id: out, type: source, pos: bottom, offset: "30%" }
+      - { id: in, type: target, pos: bottom, offset: "70%" }
+
+  - id: tls
+    kind: panel
+    label: TLS
+    position: { x: 940, y: 0 }
+    size: { w: 220, h: 160 }
+    lines:
+      - "cert + session keys"
+      - "everything after: ciphertext"
+    chips:
+      - { key: secure, text: encrypted, variant: on }
+    handles:
+      - { id: out, type: source, pos: bottom }
+      - { id: self, type: target, pos: right }
+
+  - id: router
+    kind: panel
+    label: Routers
+    position: { x: 640, y: 480 }
+    size: { w: 520, h: 130 }
+    lines:
+      - "forward by destination IP, hop by hop"
+    handles:
+      - { id: up, type: target, pos: top, offset: "25%" }
+      - { id: down, type: target, pos: top, offset: "75%" }
+      - { id: out, type: source, pos: left }
+
+  - id: server
+    kind: list
+    label: Server
+    position: { x: 100, y: 480 }
+    size: { w: 460, h: 130 }
+    key: responses
+    emptyLabel: "no responses yet"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: right }
+      - { id: out, type: source, pos: top }
+
+edges:
+  - { source: browser, from: to-dns, target: dns, to: in }
+  - { source: dns, from: out, target: browser, to: from-dns }
+  - { source: tcp, from: out, target: router, to: up }
+  - { source: tls, from: out, target: router, to: down }
+  - { source: router, from: out, target: server, to: in }
+  - { source: server, from: out, target: browser, to: from-server }

@@ -1,0 +1,474 @@
+scenarios:
+  - id: request
+    name: HTTPS request
+    components:
+      - id: browser
+      - id: dns
+      - id: tcp
+      - id: tls
+      - id: router
+      - id: server
+    events:
+      - type: URL_ENTERED
+        source: browser
+        target: dns
+        duration: 900
+        payload:
+          url: https://example.com/
+        explanation:
+          title: "You type: https://example.com/"
+          body: >-
+            The browser parses the URL: scheme https (so TCP port 443 and
+            TLS), host example.com. It needs an IP before any connection,
+            so it asks a DNS resolver — with caches checked first, of
+            course.
+          concept: "Names are for humans: every connection starts by turning a hostname into an IP address."
+        effects:
+          - op: set
+            component: browser
+            data: { url: "$payload.url", command: "open $payload.url" }
+          - op: status
+            component: browser
+            status: active
+          - op: label
+            component: browser
+            text: "resolving example.com…"
+          - op: status
+            component: dns
+            status: active
+          - op: label
+            component: dns
+            text: "recursive lookup started"
+          - op: log
+            text: "GET https://example.com/ — need IP"
+
+      - type: DNS_ROOT
+        source: dns
+        target: dns
+        duration: 800
+        explanation:
+          title: "DNS: ask the root servers"
+          body: >-
+            Your resolver (usually your ISP's or 1.1.1.1/8.8.8.8) walks the
+            hierarchy from the top: the root servers don't know example.com,
+            but they know who runs .com.
+          concept: "DNS is a delegation tree: each level points you one level down."
+        effects:
+          - op: label
+            component: dns
+            text: "root -> '.com is over there'"
+          - op: log
+            text: "dns: root servers -> refer .com TLD"
+
+      - type: DNS_TLD
+        source: dns
+        target: dns
+        duration: 800
+        explanation:
+          title: "DNS: the .com TLD servers"
+          body: >-
+            The .com nameservers also don't hold the answer, but they know
+            which nameservers are authoritative for example.com and refer
+            the resolver there.
+          concept: "Referrals, not answers — until the last hop."
+        effects:
+          - op: label
+            component: dns
+            text: ".com -> 'ask a.iana-servers.net'"
+          - op: log
+            text: "dns: TLD -> refer example.com NS"
+
+      - type: DNS_ANSWER
+        source: dns
+        target: browser
+        duration: 800
+        payload:
+          ip: 93.184.216.34
+        explanation:
+          title: "DNS answer: 93.184.216.34"
+          body: >-
+            The authoritative nameserver returns the A record. The resolver
+            caches it (with a TTL) and hands the IP to the browser. Now —
+            and only now — can a connection start.
+          concept: "Caching with TTL is why DNS changes take time to propagate."
+        effects:
+          - op: status
+            component: dns
+            status: done
+          - op: set
+            component: browser
+            data: { ip: "$payload.ip" }
+          - op: label
+            component: dns
+            text: "A $payload.ip (ttl 3600)"
+          - op: label
+            component: browser
+            text: "connecting to $payload.ip:443"
+          - op: status
+            component: tcp
+            status: active
+          - op: log
+            text: "dns: example.com -> $payload.ip"
+
+      - type: TCP_SYN
+        source: tcp
+        target: router
+        duration: 700
+        explanation:
+          title: "TCP: SYN"
+          body: >-
+            The browser's OS sends a SYN packet to port 443 — "let's talk;
+            my starting sequence number is X". The packet hops through
+            routers toward the server, each forwarding by destination IP.
+          concept: "Routers don't know about connections — they forward packets by destination IP, one hop at a time."
+        effects:
+          - op: status
+            component: router
+            status: active
+          - op: label
+            component: tcp
+            text: "SYN seq=x"
+          - op: label
+            component: router
+            text: "forwarding toward 93.184.216.34"
+          - op: log
+            text: "tcp: SYN -> :443"
+
+      - type: TCP_SYNACK
+        source: router
+        target: server
+        duration: 700
+        explanation:
+          title: "TCP: SYN-ACK"
+          body: >-
+            The server's kernel answers: SYN-ACK — "accepted, my sequence
+            number is Y, acknowledge X+1". The connection is half-open.
+          concept: "TCP state lives in both kernels — the network just carries the messages."
+        effects:
+          - op: status
+            component: server
+            status: active
+          - op: label
+            component: server
+            text: "SYN-ACK sent"
+          - op: label
+            component: tcp
+            text: "SYN-ACK received"
+          - op: log
+            text: "tcp: SYN-ACK <-"
+
+      - type: TCP_ACK
+        source: tcp
+        target: router
+        duration: 700
+        explanation:
+          title: "TCP: ACK — connection established"
+          body: >-
+            The final ACK completes the three-way handshake. Both sides now
+            agree on sequence numbers; reliable, ordered delivery is set
+            up. Nothing about encryption yet — that's the next layer's job.
+          concept: "The handshake synchronizes sequence numbers — that's what makes TCP reliable and ordered."
+        effects:
+          - op: status
+            component: tcp
+            status: done
+          - op: set
+            component: tcp
+            data: { state: ESTABLISHED }
+          - op: label
+            component: tcp
+            text: "ESTABLISHED"
+          - op: log
+            text: "tcp: connection established (443)"
+
+      - type: TLS_CLIENT_HELLO
+        source: tls
+        target: router
+        duration: 800
+        explanation:
+          title: "TLS: ClientHello"
+          body: >-
+            Over the fresh TCP connection, the browser sends a ClientHello:
+            its supported cipher suites, a random value, and the server
+            name (SNI). Router and switches still see this traffic — only
+            the payload will soon be ciphertext.
+          concept: "TLS runs on top of TCP: the handshake is ordinary packets until keys exist."
+        effects:
+          - op: status
+            component: tls
+            status: active
+          - op: label
+            component: tls
+            text: "ClientHello (SNI: example.com)"
+          - op: log
+            text: "tls: ClientHello ->"
+
+      - type: TLS_SERVER_HELLO
+        source: router
+        target: server
+        duration: 800
+        explanation:
+          title: "TLS: certificate + keys"
+          body: >-
+            The server picks a cipher, presents its certificate chain, and
+            both sides derive the session keys (TLS 1.3 folds key exchange
+            into these flights). The browser validates the chain up to a
+            trusted root and checks the name matches.
+          concept: "The certificate proves identity — the keys it helps derive provide privacy."
+        effects:
+          - op: label
+            component: server
+            text: "certificate chain sent"
+          - op: label
+            component: tls
+            text: "cert verified · keys derived"
+          - op: log
+            text: "tls: ServerHello + cert, keys derived"
+
+      - type: TLS_SECURED
+        source: tls
+        target: tls
+        duration: 700
+        explanation:
+          title: "TLS: secure channel ready"
+          body: >-
+            Handshake finished. From here every byte is encrypted with the
+            session keys — the router will forward packets it cannot read.
+          concept: "The network can route what it cannot read — encryption is end-to-end, routing is hop-by-hop."
+        effects:
+          - op: status
+            component: tls
+            status: done
+          - op: set
+            component: tls
+            data: { secure: true }
+          - op: label
+            component: tls
+            text: "channel encrypted (TLS 1.3)"
+          - op: log
+            text: "tls: handshake complete"
+
+      - type: HTTP_REQUEST
+        source: tls
+        target: router
+        duration: 800
+        payload:
+          method: GET
+          path: /
+        explanation:
+          title: "HTTP: GET / (encrypted)"
+          body: >-
+            The browser writes the HTTP request into the TLS channel: GET
+            / with Host and headers. It becomes ciphertext riding inside
+            TCP segments riding inside IP packets.
+          concept: "Layering is encapsulation: HTTP inside TLS inside TCP inside IP — each layer adds its header."
+        effects:
+          - op: label
+            component: browser
+            text: "$payload.method $payload.path sent"
+          - op: label
+            component: tls
+            text: "encrypting request"
+          - op: label
+            component: router
+            text: "forwarding ciphertext"
+          - op: log
+            text: "http: $payload.method $payload.path (encrypted)"
+
+      - type: SERVER_HANDLES
+        source: router
+        target: server
+        duration: 900
+        explanation:
+          title: "Server: decrypt, route, render data"
+          body: >-
+            The server terminates TLS, parses the request, and its
+            application returns the page. For us: a static HTML document,
+            compressed and ready.
+          concept: "TLS terminates at the server: decryption, HTTP parsing, and the application are its job."
+        effects:
+          - op: label
+            component: server
+            text: "200 OK — text/html"
+          - op: push
+            component: server
+            key: responses
+            value: { label: "200 OK · text/html (1256 B)" }
+          - op: log
+            text: "server: 200 OK, 1256 bytes"
+
+      - type: RESPONSE
+        source: server
+        target: browser
+        duration: 900
+        explanation:
+          title: "Response: 200 OK"
+          body: >-
+            The encrypted response travels the same hop-by-hop path back.
+            TCP may split it across segments; the browser reassembles, TLS
+            decrypts, and the HTML is handed to the parser.
+          concept: "One request, many packets — reliability below makes the layers above simple."
+        effects:
+          - op: status
+            component: router
+            status: done
+          - op: label
+            component: router
+            text: "delivered both ways"
+          - op: label
+            component: browser
+            text: "receiving HTML…"
+          - op: log
+            text: "http: 200 OK <- (encrypted)"
+
+      - type: RENDERED
+        source: browser
+        target: browser
+        duration: 800
+        explanation:
+          title: "Page rendered"
+          body: >-
+            The browser parses HTML, fetches subresources over the same or
+            parallel connections, and paints. Notice what each layer did:
+            DNS named it, TCP delivered it, TLS protected it, HTTP
+            described it.
+          concept: "Each layer's job is narrow — the stack's power is composition."
+        effects:
+          - op: status
+            component: browser
+            status: done
+          - op: status
+            component: server
+            status: done
+          - op: label
+            component: browser
+            text: "rendered example.com"
+          - op: log
+            text: "rendered — dns + tcp + tls + http, each one job"
+
+  - id: dns-failure
+    name: DNS failure
+    components:
+      - id: browser
+      - id: dns
+      - id: tcp
+      - id: tls
+      - id: router
+      - id: server
+    events:
+      - type: URL_ENTERED
+        source: browser
+        target: dns
+        duration: 900
+        payload:
+          url: https://exmaple.com/
+        explanation:
+          title: "You type: https://exmaple.com/ (typo)"
+          body: >-
+            A transposed letter. Everything downstream — TCP, TLS, HTTP —
+            is about to be skipped entirely, because no layer can start
+            without an address.
+          concept: "DNS is the first dependency of every connection: no name resolution, no packets."
+        effects:
+          - op: set
+            component: browser
+            data: { url: "$payload.url", command: "open $payload.url" }
+          - op: status
+            component: browser
+            status: active
+          - op: label
+            component: browser
+            text: "resolving exmaple.com…"
+          - op: status
+            component: dns
+            status: active
+          - op: label
+            component: dns
+            text: "recursive lookup started"
+          - op: log
+            text: "GET https://exmaple.com/ — need IP"
+
+      - type: DNS_WALK
+        source: dns
+        target: dns
+        duration: 900
+        explanation:
+          title: "DNS: the walk still happens"
+          body: >-
+            Root refers to .com; .com refers to the authoritative
+            nameservers for exmaple.com's actual zone — or the query
+            arrives somewhere that simply has no record of this name.
+          concept: "Failure has a lookup path too — the tree is walked either way."
+        effects:
+          - op: label
+            component: dns
+            text: "root -> .com -> authoritative"
+          - op: log
+            text: "dns: walked root -> TLD -> authoritative"
+
+      - type: DNS_NXDOMAIN
+        source: dns
+        target: dns
+        duration: 900
+        explanation:
+          title: "DNS: NXDOMAIN"
+          body: >-
+            The authoritative servers answer definitively: no such name.
+            NXDOMAIN is a real answer — "this name does not exist" — not a
+            timeout. The resolver caches the negative result briefly.
+          concept: "NXDOMAIN is authoritative non-existence — different from 'I couldn't reach DNS'."
+        effects:
+          - op: status
+            component: dns
+            status: error
+          - op: label
+            component: dns
+            text: "NXDOMAIN"
+          - op: log
+            text: "dns: NXDOMAIN for exmaple.com"
+
+      - type: NO_CONNECTION
+        source: dns
+        target: browser
+        duration: 800
+        explanation:
+          title: "No IP — no TCP, no TLS, no HTTP"
+          body: >-
+            The browser surfaces the error. TCP never sent a SYN, TLS has
+            no channel to secure, HTTP has nothing to ask for. One missing
+            lookup at layer one stopped the entire stack.
+          concept: "Layers depend upward: a failure low in the stack is invisible to the layers above."
+        effects:
+          - op: status
+            component: browser
+            status: error
+          - op: label
+            component: browser
+            text: "'This site can't be reached'"
+          - op: log
+            text: "browser: DNS_PROBE_FINISHED_NXDOMAIN"
+
+      - type: USER_FIXES
+        source: browser
+        target: browser
+        duration: 800
+        explanation:
+          title: "You spot the typo and retry"
+          body: >-
+            The user corrects the URL; a fresh resolution begins, this time
+          concept: "Retry with corrected input starts the whole pipeline over — each attempt is independent."
+        effects:
+          - op: status
+            component: dns
+            status: done
+          - op: label
+            component: dns
+            text: "idle (negative answer cached briefly)"
+          - op: status
+            component: browser
+            status: done
+          - op: label
+            component: browser
+            text: "retrying with example.com…"
+          - op: log
+            text: "retry: https://example.com/ — back to the happy path"

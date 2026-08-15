@@ -1,0 +1,57 @@
+concepts:
+  browser:
+    name: Browser
+    summary: "Drives the whole stack: resolve, connect, secure, request, render."
+    fields:
+      - { key: url, label: url }
+      - { key: ip, label: resolved ip }
+    details:
+      - "Parses the URL and delegates each job to the right layer."
+      - "Validates the TLS certificate chain against trusted roots."
+      - "Reassembles segments, decrypts, parses HTML, paints."
+
+  dns:
+    name: DNS
+    summary: "Turns hostnames into IP addresses via a delegated hierarchy."
+    details:
+      - "Stub resolver -> recursive resolver -> root -> TLD -> authoritative."
+      - "Answers are cached with TTLs — at every level."
+      - "NXDOMAIN is an authoritative 'no', not an error reaching DNS."
+
+  tcp:
+    name: TCP
+    summary: "Reliable, ordered byte stream between two endpoints."
+    fields:
+      - { key: state, label: state }
+    details:
+      - "Three-way handshake (SYN, SYN-ACK, ACK) synchronizes sequence numbers."
+      - "Retransmission and ordering live here — layers above assume them."
+      - "Connections are endpoint state in both kernels."
+
+  tls:
+    name: TLS
+    summary: "Encryption and identity on top of a TCP connection."
+    fields:
+      - { key: secure, label: secure }
+    details:
+      - "Certificates prove server identity; the handshake derives session keys."
+      - "Everything after the handshake is ciphertext to the network."
+      - "TLS 1.3 needs one round trip; QUIC folds this into the transport."
+
+  router:
+    name: Routers
+    summary: "Hop-by-hop forwarders of IP packets."
+    details:
+      - "Forward by destination IP using routing tables — no connection state."
+      - "Can read IP/TCP headers but not TLS payload."
+      - "Packets of one request may take different paths."
+
+  server:
+    name: Server
+    summary: "Terminates TLS, parses HTTP, returns the response."
+    fields:
+      - { key: responses, label: responses, list: true }
+    details:
+      - "Accepts TCP connections and completes the TLS handshake with its key."
+      - "Application logic decides the response; HTTP describes it."
+      - "One server, many connections — each independent."
