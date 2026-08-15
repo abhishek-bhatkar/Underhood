@@ -1,6 +1,6 @@
 import { parse as parseYaml } from 'yaml';
 import { z } from 'zod';
-import type { SimulationEvent } from './types';
+import type { ComponentInit, Effect, SimulationEvent } from './types';
 
 const DEFAULT_DURATION = 800;
 
@@ -10,6 +10,33 @@ const explanationSchema = z.object({
   concept: z.string().optional(),
 });
 
+const componentStatusSchema = z.enum(['idle', 'active', 'done', 'absent', 'error']);
+
+const effectSchema = z.discriminatedUnion('op', [
+  z.object({ op: z.literal('status'), component: z.string().min(1), status: componentStatusSchema }),
+  z.object({ op: z.literal('label'), component: z.string().min(1), text: z.string().optional() }),
+  z.object({ op: z.literal('set'), component: z.string().min(1), data: z.record(z.unknown()) }),
+  z.object({
+    op: z.literal('push'),
+    component: z.string().min(1),
+    key: z.string().min(1),
+    value: z.record(z.unknown()),
+  }),
+  z.object({ op: z.literal('pop'), component: z.string().min(1), key: z.string().min(1) }),
+  z.object({
+    op: z.literal('remove'),
+    component: z.string().min(1),
+    key: z.string().min(1),
+    match: z.record(z.union([z.string(), z.number()])),
+  }),
+  z.object({ op: z.literal('log'), text: z.string() }),
+]);
+
+const componentInitSchema = z.object({
+  id: z.string().min(1),
+  initial: componentStatusSchema.optional(),
+});
+
 const eventDefSchema = z.object({
   type: z.string().min(1),
   source: z.string().optional(),
@@ -17,11 +44,13 @@ const eventDefSchema = z.object({
   duration: z.number().positive().optional(),
   payload: z.record(z.unknown()).optional(),
   explanation: explanationSchema,
+  effects: z.array(effectSchema).optional(),
 });
 
 const scenarioDefSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
+  components: z.array(componentInitSchema).optional(),
   events: z.array(eventDefSchema).min(1),
 });
 
@@ -49,11 +78,13 @@ export interface EventDef {
   duration?: number;
   payload?: Record<string, unknown>;
   explanation: { title: string; body: string; concept?: string };
+  effects?: Effect[];
 }
 
 export interface ScenarioDef {
   id: string;
   name: string;
+  components?: ComponentInit[];
   events: EventDef[];
 }
 
@@ -110,6 +141,7 @@ export function materializeEvents(scenario: ScenarioDef): SimulationEvent[] {
       target: def.target,
       payload: def.payload,
       explanation: def.explanation,
+      effects: def.effects,
     };
     t += event.duration;
     return event;

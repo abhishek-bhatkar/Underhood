@@ -5,6 +5,16 @@ export interface EventExplanation {
   concept?: string;
 }
 
+/** Declarative state transition applied when an event occurs. */
+export type Effect =
+  | { op: 'status'; component: string; status: ComponentStatus }
+  | { op: 'label'; component: string; text?: string }
+  | { op: 'set'; component: string; data: Record<string, unknown> }
+  | { op: 'push'; component: string; key: string; value: Record<string, unknown> }
+  | { op: 'pop'; component: string; key: string }
+  | { op: 'remove'; component: string; key: string; match: Record<string, string | number> }
+  | { op: 'log'; text: string };
+
 export interface SimulationEvent {
   id: string;
   type: string;
@@ -18,9 +28,10 @@ export interface SimulationEvent {
   target?: string;
   payload?: Record<string, unknown>;
   explanation: EventExplanation;
+  effects?: Effect[];
 }
 
-export type ComponentStatus = 'idle' | 'active' | 'done' | 'absent';
+export type ComponentStatus = 'idle' | 'active' | 'done' | 'absent' | 'error';
 
 export interface ComponentRuntime {
   id: string;
@@ -29,6 +40,12 @@ export interface ComponentRuntime {
   label?: string;
   /** Component-specific accumulated state. */
   data: Record<string, unknown>;
+}
+
+/** Declared initial state of a component in a scenario. */
+export interface ComponentInit {
+  id: string;
+  initial?: ComponentStatus;
 }
 
 export interface LogEntry {
@@ -42,6 +59,3 @@ export interface SimulationState {
   components: Record<string, ComponentRuntime>;
   log: LogEntry[];
 }
-
-/** All component ids used by the docker-run simulation. */
-export type ComponentId = 'terminal' | 'cli' | 'daemon' | 'registry' | 'image-store' | 'container';

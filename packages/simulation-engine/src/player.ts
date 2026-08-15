@@ -1,5 +1,5 @@
 import { deriveState } from './fold';
-import type { SimulationEvent, SimulationState } from './types';
+import type { ComponentInit, SimulationEvent, SimulationState } from './types';
 
 export type PlayerStatus = 'idle' | 'playing' | 'paused' | 'ended';
 
@@ -22,13 +22,15 @@ export interface PlayerSnapshot {
  */
 export class SimulationPlayer {
   private readonly events: SimulationEvent[];
+  private readonly initial: ComponentInit[];
   private readonly listeners = new Set<() => void>();
   private timer: ReturnType<typeof setTimeout> | null = null;
   private snap: PlayerSnapshot;
 
-  constructor(events: SimulationEvent[]) {
+  constructor(events: SimulationEvent[], initial: ComponentInit[] = []) {
     this.events = events;
-    this.snap = { status: 'idle', currentStep: -1, speed: 1, state: deriveState(events, -1) };
+    this.initial = initial;
+    this.snap = { status: 'idle', currentStep: -1, speed: 1, state: deriveState(events, -1, initial) };
   }
 
   getSnapshot(): PlayerSnapshot {
@@ -106,7 +108,7 @@ export class SimulationPlayer {
   }
 
   private rebuild(currentStep: number, status: PlayerStatus, speed = this.snap.speed): PlayerSnapshot {
-    return { status, currentStep, speed, state: deriveState(this.events, currentStep) };
+    return { status, currentStep, speed, state: deriveState(this.events, currentStep, this.initial) };
   }
 
   /** Post-advance bookkeeping: end at the last event, otherwise keep waiting. */

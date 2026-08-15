@@ -1,13 +1,14 @@
 export type {
-  ComponentId,
+  ComponentInit,
   ComponentRuntime,
   ComponentStatus,
+  Effect,
   EventExplanation,
   LogEntry,
   SimulationEvent,
   SimulationState,
 } from './types';
-export { COMPONENT_IDS, deriveState, makeEvent } from './fold';
+export { deriveState, makeEvent } from './fold';
 export { SimulationPlayer } from './player';
 export type { PlayerSnapshot, PlayerStatus } from './player';
 export {

@@ -3,9 +3,23 @@ import { SimulationPlayer } from '../player';
 import { makeEvent } from '../fold';
 
 const events = [
-  makeEvent(0, 'COMMAND_ENTERED', { duration: 1000, source: 'terminal', target: 'cli', payload: { command: 'docker run nginx' } }),
+  makeEvent(0, 'COMMAND_ENTERED', {
+    duration: 1000,
+    source: 'terminal',
+    target: 'cli',
+    payload: { command: 'docker run nginx' },
+    effects: [
+      { op: 'set', component: 'terminal', data: { command: '$payload.command' } },
+      { op: 'log', text: '$ $payload.command' },
+    ],
+  }),
   makeEvent(1, 'CLI_REQUEST', { duration: 1000, source: 'cli', target: 'daemon' }),
-  makeEvent(2, 'IMAGE_LOOKUP', { duration: 1000, source: 'daemon', target: 'image-store' }),
+  makeEvent(2, 'IMAGE_LOOKUP', {
+    duration: 1000,
+    source: 'daemon',
+    target: 'image-store',
+    effects: [{ op: 'status', component: 'image-store', status: 'active' }],
+  }),
 ];
 
 describe('SimulationPlayer', () => {
@@ -13,16 +27,16 @@ describe('SimulationPlayer', () => {
   afterEach(() => vi.useRealTimers());
 
   it('starts idle at step -1 with empty state', () => {
-    const p = new SimulationPlayer(events);
+    const p = new SimulationPlayer(events, [{ id: 'terminal' }, { id: 'cli' }]);
     expect(p.getSnapshot()).toMatchObject({ status: 'idle', currentStep: -1, speed: 1 });
-    expect(p.getSnapshot().state.log).toHaveLength(0);
+    expect(p.getSnapshot().state.components.terminal.data.command).toBeUndefined();
   });
 
   it('next() applies one event; prev() steps back to -1', () => {
-    const p = new SimulationPlayer(events);
+    const p = new SimulationPlayer(events, [{ id: 'terminal' }, { id: 'cli' }]);
     p.next();
     expect(p.getSnapshot().currentStep).toBe(0);
-    expect(p.getSnapshot().state.components.terminal.data.command).toBeDefined();
+    expect(p.getSnapshot().state.components.terminal.data.command).toBe('docker run nginx');
     p.next();
     expect(p.getSnapshot().currentStep).toBe(1);
     p.prev();
@@ -93,7 +107,8 @@ describe('SimulationPlayer', () => {
     expect(p.getSnapshot().currentStep).toBe(2);
     expect(p.getSnapshot().state.components['image-store'].status).toBe('active');
     p.seek(0);
-    expect(p.getSnapshot().state.components['image-store'].status).toBe('idle');
+    // Event 2 never applied, so the component was never referenced either.
+    expect(p.getSnapshot().state.components['image-store']).toBeUndefined();
     expect(p.getSnapshot().status).toBe('paused');
   });
 

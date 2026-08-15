@@ -1,21 +1,10 @@
-import type { ComponentId, ComponentRuntime, SimulationEvent, SimulationState } from './types';
-
-export const COMPONENT_IDS: readonly ComponentId[] = [
-  'terminal',
-  'cli',
-  'daemon',
-  'registry',
-  'image-store',
-  'container',
-];
-
-const initialComponents = (): Record<string, ComponentRuntime> =>
-  Object.fromEntries(
-    COMPONENT_IDS.map((id) => [
-      id,
-      { id, status: id === 'container' ? 'absent' : 'idle', data: {} } satisfies ComponentRuntime,
-    ]),
-  );
+import type {
+  ComponentInit,
+  ComponentRuntime,
+  Effect,
+  SimulationEvent,
+  SimulationState,
+} from './types';
 
 /** Test/content helper: build a minimal valid event. */
 export function makeEvent(
@@ -33,143 +22,110 @@ export function makeEvent(
   };
 }
 
-type Handler = (state: SimulationState, event: SimulationEvent) => void;
+/** Replace $payload.<key> references in a string. Missing keys become ''. */
+function tpl(text: string, payload: Record<string, unknown> | undefined): string {
+  return text.replace(/\$payload\.(\w+)/g, (_, key: string) => {
+    const value = payload?.[key];
+    return value === undefined || value === null ? '' : String(value);
+  });
+}
+
+/** Deeply template every string in a value (objects, arrays, primitives). */
+function tplDeep(value: unknown, payload: Record<string, unknown> | undefined): unknown {
+  if (typeof value === 'string') return tpl(value, payload);
+  if (Array.isArray(value)) return value.map((v) => tplDeep(v, payload));
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([k, v]) => [k, tplDeep(v, payload)]),
+    );
+  }
+  return value;
+}
+
+function applyEffect(state: SimulationState, effect: Effect, payload: Record<string, unknown> | undefined): void {
+  // Components referenced by effects are auto-created idle; scenarios only
+  // need to pre-declare components with a non-idle initial status.
+  const comp =
+    'component' in effect
+      ? (state.components[effect.component] ??= {
+          id: effect.component,
+          status: 'idle' as const,
+          data: {},
+        })
+      : undefined;
+  switch (effect.op) {
+    case 'status':
+      if (comp) comp.status = effect.status;
+      return;
+    case 'label':
+      if (comp) comp.label = effect.text === undefined ? undefined : tpl(effect.text, payload);
+      return;
+    case 'set':
+      if (comp) {
+        for (const [k, v] of Object.entries(tplDeep(effect.data, payload) as Record<string, unknown>)) {
+          comp.data[k] = v;
+        }
+      }
+      return;
+    case 'push': {
+      if (!comp) return;
+      const items = (comp.data[effect.key] as unknown[]) ?? (comp.data[effect.key] = []);
+      items.push(tplDeep(effect.value, payload));
+      return;
+    }
+    case 'pop': {
+      if (!comp) return;
+      const items = comp.data[effect.key] as unknown[] | undefined;
+      if (Array.isArray(items)) items.pop();
+      return;
+    }
+    case 'remove': {
+      if (!comp) return;
+      const items = comp.data[effect.key] as unknown[] | undefined;
+      if (!Array.isArray(items)) return;
+      const index = items.findIndex((item) => {
+        if (!item || typeof item !== 'object') return false;
+        const record = item as Record<string, unknown>;
+        return Object.entries(effect.match).every(
+          ([k, v]) => String(record[k]) === String(tplDeep(v, payload)),
+        );
+      });
+      if (index >= 0) items.splice(index, 1);
+      return;
+    }
+    case 'log':
+      state.log.push({ eventIndex: state.currentStep, text: tpl(effect.text, payload) });
+      return;
+  }
+}
 
 /**
- * Explicit handler per event type: deterministic, auditable state transitions.
- * Mirrors real docker behavior closely enough to teach accurately.
+ * Pure fold: reduce events[0..uptoIndex] into a SimulationState by applying
+ * each event's declarative effects. Rewind is free — state at any point is
+ * derived by folding fewer events.
  */
-const handlers: Record<string, Handler> = {
-  COMMAND_ENTERED: (s, e) => {
-    s.components.terminal.data.command = e.payload?.command;
-    s.components.terminal.status = 'done';
-    s.components.cli.status = 'active';
-    s.components.cli.label = 'parsing command';
-    s.log.push({ eventIndex: s.currentStep, text: `$ ${String(e.payload?.command ?? '')}` });
-  },
-  CLI_REQUEST: (s, e) => {
-    s.components.cli.status = 'active';
-    s.components.cli.label = `${e.payload?.method} ${e.payload?.path}`;
-    s.components.daemon.status = 'active';
-    s.components.daemon.label = 'handling API request';
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `cli -> daemon: ${e.payload?.method} ${e.payload?.path}`,
-    });
-  },
-  IMAGE_LOOKUP: (s) => {
-    s.components.daemon.status = 'active';
-    s.components.daemon.label = 'checking local image store…';
-    s.components['image-store'].status = 'active';
-    s.log.push({ eventIndex: s.currentStep, text: 'daemon: looking for image locally' });
-  },
-  IMAGE_MISS: (s) => {
-    s.components['image-store'].status = 'idle';
-    s.components.daemon.label = 'image not found locally';
-    s.log.push({ eventIndex: s.currentStep, text: "Unable to find image 'nginx:latest' locally" });
-  },
-  IMAGE_HIT: (s) => {
-    s.components['image-store'].status = 'done';
-    s.components.daemon.label = 'image found locally';
-    s.log.push({ eventIndex: s.currentStep, text: 'Image nginx:latest found in local store' });
-  },
-  REGISTRY_REQUEST: (s, e) => {
-    s.components.daemon.label = 'contacting registry';
-    s.components.registry.status = 'active';
-    s.components.registry.label = 'auth + manifest';
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `daemon -> ${e.payload?.registry}: auth, fetch manifest`,
-    });
-  },
-  MANIFEST_FETCHED: (s, e) => {
-    s.components.registry.label = `manifest: ${e.payload?.layers} layers`;
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `manifest fetched (${e.payload?.layers} layers)`,
-    });
-  },
-  LAYER_PULL: (s, e) => {
-    const store = s.components['image-store'];
-    store.status = 'active';
-    store.label = `pulling layer ${e.payload?.layerIndex}/${e.payload?.total}`;
-    const layers = (store.data.layers as unknown[]) ?? (store.data.layers = []);
-    layers.push({
-      layerIndex: e.payload?.layerIndex,
-      total: e.payload?.total,
-      name: e.payload?.name,
-      digest: e.payload?.digest,
-    });
-    s.components.registry.status = 'active';
-    s.components.registry.label = `serving blob ${String(e.payload?.digest).slice(0, 7)}`;
-    s.log.push({ eventIndex: s.currentStep, text: `${e.payload?.digest}: Pull complete` });
-  },
-  IMAGE_READY: (s, e) => {
-    s.components['image-store'].status = 'done';
-    s.components['image-store'].label = 'image ready';
-    s.components.registry.status = 'done';
-    s.components.registry.label = undefined;
-    s.components.daemon.label = `image ${e.payload?.image} ready`;
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `Status: Downloaded newer image for ${e.payload?.image}`,
-    });
-  },
-  CONTAINER_CREATED: (s, e) => {
-    const c = s.components.container;
-    c.status = 'active';
-    c.data.containerId = e.payload?.containerId;
-    c.data.writableLayer = true;
-    c.label = 'container created';
-    s.components.daemon.label = 'container created';
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `container ${e.payload?.containerId} created (writable layer added)`,
-    });
-  },
-  NETWORK_ATTACHED: (s, e) => {
-    const c = s.components.container;
-    c.data.ip = e.payload?.ip;
-    c.data.network = e.payload?.network;
-    c.data.veth = e.payload?.veth;
-    c.label = `network: ${e.payload?.network}`;
-    s.log.push({
-      eventIndex: s.currentStep,
-      text: `connected to bridge (${e.payload?.veth}) -> ${e.payload?.ip}`,
-    });
-  },
-  PROCESS_STARTED: (s, e) => {
-    const c = s.components.container;
-    c.data.pid = e.payload?.pid;
-    c.data.process = e.payload?.process;
-    c.label = `PID ${e.payload?.pid}: ${e.payload?.process}`;
-    s.log.push({ eventIndex: s.currentStep, text: `PID 1 started: ${e.payload?.process}` });
-  },
-  CONTAINER_RUNNING: (s) => {
-    const c = s.components.container;
-    c.status = 'done';
-    c.data.running = true;
-    c.label = 'running';
-    s.components.daemon.status = 'done';
-    s.components.daemon.label = 'supervising';
-    s.components.cli.status = 'done';
-    s.components.cli.label = undefined;
-    s.components.terminal.status = 'done';
-    s.log.push({ eventIndex: s.currentStep, text: 'STATUS: Running — nginx is up' });
-  },
-};
-
-/**
- * Pure fold: reduce events[0..uptoIndex] into a SimulationState.
- * Rewind is free — state at any point is derived by folding fewer events.
- */
-export function deriveState(events: SimulationEvent[], uptoIndex: number): SimulationState {
-  const state: SimulationState = { currentStep: -1, components: initialComponents(), log: [] };
+export function deriveState(
+  events: SimulationEvent[],
+  uptoIndex: number,
+  initial: ComponentInit[] = [],
+): SimulationState {
+  const state: SimulationState = {
+    currentStep: -1,
+    components: Object.fromEntries(
+      initial.map((c) => [
+        c.id,
+        { id: c.id, status: c.initial ?? 'idle', data: {} } satisfies ComponentRuntime,
+      ]),
+    ),
+    log: [],
+  };
   const last = Math.min(uptoIndex, events.length - 1);
   for (let i = 0; i <= last; i++) {
     const event = events[i];
     state.currentStep = i;
-    handlers[event.type]?.(state, event);
+    for (const effect of event.effects ?? []) {
+      applyEffect(state, effect, event.payload);
+    }
   }
   return state;
 }
