@@ -4,6 +4,7 @@ import {
   Background,
   BackgroundVariant,
   Controls,
+  MarkerType,
   type Edge,
   type Node,
   type NodeTypes,
@@ -126,13 +127,22 @@ export function Canvas({ state, currentEvent, selected, onSelect }: CanvasProps)
       currentEvent && currentEvent.source && currentEvent.target
         ? `${currentEvent.source}-${currentEvent.target}`
         : null;
-    return EDGE_DEFS.map((def) => ({
-      ...def,
-      animated: def.id === activeId,
-      className: def.id === activeId ? 'active' : undefined,
-      type: 'smoothstep',
-      style: { borderRadius: 8 },
-    }));
+    return EDGE_DEFS.map((def) => {
+      const isActive = def.id === activeId;
+      return {
+        ...def,
+        animated: isActive,
+        className: isActive ? 'active' : undefined,
+        type: 'smoothstep',
+        style: { borderRadius: 8, stroke: isActive ? '#ffb454' : undefined },
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+          width: 13,
+          height: 13,
+          color: isActive ? '#ffb454' : '#223350',
+        },
+      };
+    });
   }, [currentEvent]);
 
   return (
