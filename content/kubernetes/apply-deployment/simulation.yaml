@@ -1,0 +1,495 @@
+scenarios:
+  - id: apply
+    name: Apply deployment
+    components:
+      - id: terminal
+      - id: apiserver
+      - id: etcd
+      - id: controller
+      - id: scheduler
+      - id: kubelet
+      - id: pods
+        initial: absent
+    events:
+      - type: APPLY_COMMAND
+        source: terminal
+        target: apiserver
+        duration: 1000
+        payload:
+          command: kubectl apply -f deployment.yaml
+        explanation:
+          title: "You run: kubectl apply -f deployment.yaml"
+          body: >-
+            kubectl reads your manifest — a Deployment named web with 3
+            replicas of nginx — and sends it to the API server as a REST
+            request over HTTPS. kubectl is just another API client; all
+            state changes flow through the API server.
+          concept: "Everything goes through the API: kubectl, controllers, kubelets — all are API clients."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: apiserver
+            status: active
+          - op: label
+            component: apiserver
+            text: "authenticating + validating"
+          - op: log
+            text: "$ kubectl apply -f deployment.yaml"
+
+      - type: API_STORED
+        source: apiserver
+        target: etcd
+        duration: 900
+        payload:
+          resource: deployments/web
+          replicas: 3
+        explanation:
+          title: "Desired state stored in etcd"
+          body: >-
+            The API server authenticates you, validates the manifest against
+            the schema, and writes the Deployment object to etcd — the
+            cluster's source of truth. Nothing is running yet; the cluster
+            now merely knows what SHOULD run.
+          concept: "Desired state is just stored data: '3 replicas of web' — making it true is someone else's job."
+        effects:
+          - op: status
+            component: etcd
+            status: active
+          - op: push
+            component: etcd
+            key: keys
+            value: { label: "/registry/deployments/web (replicas: $payload.replicas)" }
+          - op: label
+            component: apiserver
+            text: "201 Created"
+          - op: log
+            text: "deployment.apps/web created"
+
+      - type: CONTROLLER_TRIGGERED
+        source: apiserver
+        target: controller
+        duration: 900
+        explanation:
+          title: "Deployment controller: desired ≠ actual"
+          body: >-
+            The deployment controller watches the API for Deployments. It
+            sees web with replicas=3 and zero matching Pods, so it creates a
+            ReplicaSet, which owns creating the Pods. Controllers are loops:
+            observe, diff, act.
+          concept: "Reconciliation: controllers continuously compare desired vs actual state and act on the difference."
+        effects:
+          - op: status
+            component: controller
+            status: active
+          - op: set
+            component: controller
+            data: { desired: 3, actual: 0 }
+          - op: label
+            component: controller
+            text: "desired 3 / actual 0"
+          - op: log
+            text: "deployment controller: ReplicaSet web-7d9c created"
+
+      - type: PODS_CREATED
+        source: controller
+        target: scheduler
+        duration: 900
+        payload:
+          pods: 3
+        explanation:
+          title: "Three Pods created — Pending"
+          body: >-
+            The ReplicaSet creates three Pod objects. They have no node, no
+            container, no IP: just records saying "run nginx". The scheduler
+            picks up these Pending pods from its watch on the API.
+          concept: "A Pod starts as data: scheduling turns it into something placed on a node."
+        effects:
+          - op: status
+            component: scheduler
+            status: active
+          - op: status
+            component: pods
+            status: active
+          - op: set
+            component: controller
+            data: { actual: 3 }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x1 (Pending)" }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x2 (Pending)" }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x3 (Pending)" }
+          - op: label
+            component: controller
+            text: "desired 3 / actual 3 (pending)"
+          - op: log
+            text: "ReplicaSet created 3 Pods (Pending)"
+
+      - type: PODS_SCHEDULED
+        source: scheduler
+        target: kubelet
+        duration: 1000
+        explanation:
+          title: "Scheduler binds the Pods to node-1"
+          body: >-
+            For each Pending pod the scheduler filters feasible nodes
+            (resources, taints, affinity) then scores them and "binds" the
+            pod to the winner by writing it back to the API. With one node,
+            everything lands on node-1.
+          concept: "Scheduling is a placement decision recorded in the API — the scheduler never starts anything itself."
+        effects:
+          - op: status
+            component: kubelet
+            status: active
+          - op: label
+            component: scheduler
+            text: "3 pods -> node-1"
+          - op: label
+            component: kubelet
+            text: "watching node-1 pods"
+          - op: log
+            text: "scheduler: bound web-7d9c-x1..x3 -> node-1"
+
+      - type: IMAGE_PULLED
+        source: kubelet
+        target: pods
+        duration: 1000
+        payload:
+          image: nginx:latest
+        explanation:
+          title: "Kubelet pulls the image via containerd"
+          body: >-
+            The kubelet on node-1 sees pods bound to its node and instructs
+            the container runtime (containerd) to pull nginx:latest and
+            create the containers per the pod spec.
+          concept: "The kubelet is the node's agent: its whole job is making assigned pods real."
+        effects:
+          - op: label
+            component: kubelet
+            text: "pulling $payload.image"
+          - op: log
+            text: "kubelet: pulled $payload.image via containerd"
+
+      - type: CONTAINERS_STARTED
+        source: kubelet
+        target: pods
+        duration: 900
+        explanation:
+          title: "Containers started — waiting on readiness"
+          body: >-
+            containerd starts each container inside a Pod sandbox (pause
+            container, shared network namespace). The pods report
+            Running, but the Deployment doesn't count them until their
+            readiness probe passes.
+          concept: "Running ≠ Ready: readiness gates when a Pod counts toward desired state."
+        effects:
+          - op: set
+            component: pods
+            data: { ready: 3 }
+          - op: label
+            component: kubelet
+            text: "3 containers running"
+          - op: label
+            component: pods
+            text: "3/3 ready"
+          - op: log
+            text: "pods Running, readiness probes passing"
+
+      - type: RECONCILED
+        source: pods
+        target: terminal
+        duration: 800
+        explanation:
+          title: "Observed = desired — reconciled"
+          body: >-
+            Status flows back through the API: 3/3 ready. The controller's
+            diff is now zero and the loop goes quiet, watching. kubectl
+            printed its confirmation long ago — nobody is driving anymore.
+          concept: "Steady state is a watched equilibrium: the loop is idle but armed."
+        effects:
+          - op: status
+            component: pods
+            status: done
+          - op: status
+            component: kubelet
+            status: done
+          - op: status
+            component: scheduler
+            status: done
+          - op: status
+            component: controller
+            status: done
+          - op: status
+            component: etcd
+            status: done
+          - op: status
+            component: apiserver
+            status: done
+          - op: label
+            component: apiserver
+            text: watching
+          - op: label
+            component: controller
+            text: "desired 3 / actual 3 ✓"
+          - op: log
+            text: "deployment/web: 3/3 ready — reconciled"
+
+  - id: pod-crash
+    name: Pod crash + self-healing
+    components:
+      - id: terminal
+      - id: apiserver
+      - id: etcd
+      - id: controller
+      - id: scheduler
+      - id: kubelet
+      - id: pods
+        initial: absent
+    events:
+      - type: APPLY_COMMAND
+        source: terminal
+        target: apiserver
+        duration: 900
+        payload:
+          command: kubectl apply -f deployment.yaml
+        explanation:
+          title: "Fast-forward: deployment applied"
+          body: >-
+            Same start as the happy path — compressed. The cluster reaches
+            3/3 running replicas.
+          concept: "Failure scenarios start from steady state."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: apiserver
+            status: done
+          - op: status
+            component: etcd
+            status: done
+          - op: label
+            component: etcd
+            text: "desired: 3 replicas"
+          - op: log
+            text: "$ kubectl apply -f deployment.yaml"
+
+      - type: STEADY_STATE
+        source: controller
+        target: scheduler
+        duration: 900
+        explanation:
+          title: "3/3 running — steady state"
+          body: >-
+            All three pods are scheduled on node-1, running, and ready. The
+            reconciliation loop is idle: observed equals desired.
+          concept: "The system is now maintaining state, not creating it."
+        effects:
+          - op: status
+            component: controller
+            status: done
+          - op: status
+            component: scheduler
+            status: done
+          - op: status
+            component: kubelet
+            status: done
+          - op: status
+            component: pods
+            status: done
+          - op: set
+            component: controller
+            data: { desired: 3, actual: 3 }
+          - op: set
+            component: pods
+            data: { ready: 3 }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x1 (Running)" }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x2 (Running)" }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x3 (Running)" }
+          - op: label
+            component: controller
+            text: "desired 3 / actual 3 ✓"
+          - op: label
+            component: pods
+            text: "3/3 ready"
+          - op: log
+            text: "deployment/web: 3/3 ready"
+
+      - type: POD_CRASHED
+        source: pods
+        target: pods
+        duration: 900
+        payload:
+          pod: web-7d9c-x2
+        explanation:
+          title: "web-7d9c-x2 crashes (OOMKilled)"
+          body: >-
+            The app inside pod x2 exceeds its memory limit; the kernel's OOM
+            killer terminates the container. The kubelet observes the exit
+            and reports the status through the API. The Pod object still
+            exists — its container is dead.
+          concept: "Kubernetes doesn't prevent failures — it notices them, fast."
+        effects:
+          - op: status
+            component: pods
+            status: error
+          - op: set
+            component: pods
+            data: { ready: 2 }
+          - op: remove
+            component: pods
+            key: replicas
+            match: { label: "web-7d9c-x2 (Running)" }
+          - op: label
+            component: pods
+            text: "2/3 ready — x2 OOMKilled"
+          - op: label
+            component: kubelet
+            text: "container exited (137)"
+          - op: status
+            component: kubelet
+            status: active
+          - op: log
+            text: "pod web-7d9c-x2: OOMKilled (exit 137)"
+
+      - type: CONTROLLER_NOTICED
+        source: apiserver
+        target: controller
+        duration: 900
+        explanation:
+          title: "Controller sees: desired 3 / actual 2"
+          body: >-
+            On its next loop pass the controller reads the new reality —
+            only 2 ready pods — and the diff is non-zero again. It doesn't
+            know or care WHY the pod died; it just closes the gap.
+          concept: "Self-healing is just the same reconciliation loop: no special recovery mode exists."
+        effects:
+          - op: status
+            component: controller
+            status: active
+          - op: set
+            component: controller
+            data: { actual: 2 }
+          - op: label
+            component: controller
+            text: "desired 3 / actual 2"
+          - op: log
+            text: "deployment controller: diff detected"
+
+      - type: REPLACEMENT_CREATED
+        source: controller
+        target: scheduler
+        duration: 900
+        explanation:
+          title: "Replacement Pod created — web-7d9c-x4"
+          body: >-
+            The ReplicaSet creates a fresh pod with a new name. The dead
+            pod isn't resurrected — replacement, not resurrection, is the
+            Kubernetes model. Restarting a container in place is the
+            kubelet's fallback for crash-looping pods.
+          concept: "Replace, don't repair: new pod, new name, same spec."
+        effects:
+          - op: status
+            component: scheduler
+            status: active
+          - op: set
+            component: controller
+            data: { actual: 3 }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x4 (Pending)" }
+          - op: label
+            component: controller
+            text: "desired 3 / actual 3 (pending)"
+          - op: log
+            text: "ReplicaSet created web-7d9c-x4 (Pending)"
+
+      - type: REPLACEMENT_SCHEDULED
+        source: scheduler
+        target: kubelet
+        duration: 900
+        explanation:
+          title: "Scheduler binds x4 to node-1"
+          body: >-
+            The scheduler places the replacement — here, the same node —
+            and node-1's kubelet picks it up and starts the container
+            again, reusing the already-pulled image.
+          concept: "Healing reuses the normal path: schedule, start, become ready."
+        effects:
+          - op: label
+            component: scheduler
+            text: "x4 -> node-1"
+          - op: label
+            component: kubelet
+            text: "starting web-7d9c-x4"
+          - op: log
+            text: "kubelet: started container for web-7d9c-x4"
+
+      - type: SELF_HEALED
+        source: pods
+        target: terminal
+        duration: 800
+        explanation:
+          title: "3/3 again — no human involved"
+          body: >-
+            The replacement passes readiness; status converges to 3/3 and
+            the loop goes back to watching. Total time from crash to
+            healthy: seconds. This is the payoff of desired-state
+            reconciliation.
+          concept: "The unit of recovery is the loop, not the operator."
+        effects:
+          - op: remove
+            component: pods
+            key: replicas
+            match: { label: "web-7d9c-x4 (Pending)" }
+          - op: push
+            component: pods
+            key: replicas
+            value: { label: "web-7d9c-x4 (Running)" }
+          - op: set
+            component: pods
+            data: { ready: 3 }
+          - op: status
+            component: pods
+            status: done
+          - op: status
+            component: kubelet
+            status: done
+          - op: status
+            component: scheduler
+            status: done
+          - op: status
+            component: controller
+            status: done
+          - op: label
+            component: controller
+            text: "desired 3 / actual 3 ✓"
+          - op: label
+            component: pods
+            text: "3/3 ready"
+          - op: log
+            text: "deployment/web: 3/3 ready — self-healed"

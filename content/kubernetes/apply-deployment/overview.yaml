@@ -1,0 +1,10 @@
+title: What happens when you create a Deployment with three replicas?
+summary: >-
+  kubectl sends your manifest to the API server, which stores the desired
+  state in etcd. Controllers notice the gap between desired and actual,
+  create a ReplicaSet and three Pods, the scheduler binds them to a node,
+  and the kubelet starts the containers. Kill a Pod and watch the loop
+  replace it with no human involved.
+abstraction: >-
+  Simplified single-node teaching model: one Node, no Services/kube-proxy,
+  and the scheduler/controller loops compressed to single steps.

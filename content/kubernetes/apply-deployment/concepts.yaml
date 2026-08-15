@@ -1,0 +1,66 @@
+concepts:
+  terminal:
+    name: Terminal (kubectl)
+    summary: "The CLI that talks to the API server — one client among many."
+    fields:
+      - { key: command, label: command }
+    details:
+      - "Reads manifests and issues REST calls against the API server over HTTPS."
+      - "Applies are declarative: 'make this state true', not 'run this command'."
+      - "kubectl exiting changes nothing — the loop owns the outcome."
+
+  apiserver:
+    name: API Server
+    summary: "The single entry point: authentication, validation, and storage of all cluster state."
+    details:
+      - "Every actor — kubectl, controllers, kubelets — is an API client."
+      - "Validates objects against OpenAPI schemas and admission webhooks before persisting."
+      - "Serves watches so clients learn about state changes by streaming, not polling."
+
+  etcd:
+    name: etcd
+    summary: "The cluster's source of truth — a distributed key-value store."
+    fields:
+      - { key: keys, label: objects, list: true }
+    details:
+      - "Every Deployment, Pod, Service lives as a key under /registry/…."
+      - "Only the API server talks to etcd; nothing else touches it directly."
+      - "Losing etcd loses the cluster; that is why it runs as a quorum of members."
+
+  controller:
+    name: Controllers
+    summary: "Loops that compare desired to actual state and close the difference."
+    fields:
+      - { key: desired, label: desired }
+      - { key: actual, label: actual }
+    details:
+      - "Deployment controller owns ReplicaSets; ReplicaSet controller owns Pods."
+      - "Observe → diff → act, forever — self-healing is this loop, nothing more."
+      - "Controllers run in kube-controller-manager, watching via the API."
+
+  scheduler:
+    name: Scheduler
+    summary: "Places Pending pods onto feasible nodes."
+    details:
+      - "Filtering eliminates nodes (resources, taints, affinity); scoring ranks the rest."
+      - "Binding is a write to the API — the scheduler starts nothing itself."
+      - "One pod per decision; it never moves running pods (that's eviction's job)."
+
+  kubelet:
+    name: Kubelet
+    summary: "The node agent that makes assigned pods real."
+    details:
+      - "Watches the API for pods bound to its node."
+      - "Drives the container runtime (containerd/CRI-O) to pull images and start containers."
+      - "Restarts crash-looping containers and reports pod status and node health."
+
+  pods:
+    name: Pods
+    summary: "The smallest deployable unit — one or more containers sharing network and storage."
+    fields:
+      - { key: ready, label: ready }
+      - { key: replicas, label: pods, list: true }
+    details:
+      - "Containers in a pod share an IP and can talk over localhost."
+      - "Pods are cattle: they get names, not funerals — replacement is the recovery model."
+      - "Readiness gates whether a pod counts toward the Deployment's target."

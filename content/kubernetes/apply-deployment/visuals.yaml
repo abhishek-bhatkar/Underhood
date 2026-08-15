@@ -1,0 +1,111 @@
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: out, type: source, pos: right }
+
+  - id: control-plane
+    kind: group
+    label: Control Plane
+    position: { x: 0, y: 230 }
+    size: { w: 560, h: 440 }
+
+  - id: apiserver
+    kind: panel
+    label: API Server
+    parent: control-plane
+    position: { x: 30, y: 70 }
+    size: { w: 240, h: 180 }
+    lines:
+      - "REST: /apis/apps/v1"
+      - authn · authz · validate
+      - watches + events
+    handles:
+      - { id: in, type: target, pos: top, offset: "20%" }
+      - { id: to-etcd, type: source, pos: bottom, offset: "30%" }
+      - { id: to-controller, type: source, pos: right }
+      - { id: to-kubelet, type: source, pos: top, offset: "80%" }
+
+  - id: etcd
+    kind: list
+    label: etcd
+    parent: control-plane
+    position: { x: 30, y: 280 }
+    size: { w: 240, h: 130 }
+    key: keys
+    emptyLabel: "empty — no objects yet"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: top }
+
+  - id: controller
+    kind: panel
+    label: Controllers
+    parent: control-plane
+    position: { x: 320, y: 70 }
+    size: { w: 210, h: 180 }
+    lines:
+      - deployment -> ReplicaSet
+      - "loop: observe · diff · act"
+    chips:
+      - { key: desired, text: "desired $value", variant: net }
+      - { key: actual, text: "actual $value", variant: pid }
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: bottom }
+
+  - id: scheduler
+    kind: panel
+    label: Scheduler
+    parent: control-plane
+    position: { x: 320, y: 290 }
+    size: { w: 210, h: 120 }
+    lines:
+      - filter + score nodes
+      - bind pod -> node
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: right }
+
+  - id: node1
+    kind: group
+    label: Node 1
+    position: { x: 620, y: 230 }
+    size: { w: 540, h: 440 }
+
+  - id: kubelet
+    kind: panel
+    label: Kubelet
+    parent: node1
+    position: { x: 30, y: 60 }
+    size: { w: 480, h: 110 }
+    lines:
+      - "node agent · CRI -> containerd"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-pods, type: source, pos: bottom }
+
+  - id: pods
+    kind: list
+    label: Pods
+    parent: node1
+    position: { x: 30, y: 200 }
+    size: { w: 480, h: 210 }
+    key: replicas
+    emptyLabel: "no pods yet"
+    itemTemplate: "$value.label"
+    absentLabel: "no pods — apply a Deployment"
+    chips:
+      - { key: ready, text: "$value / 3 ready", variant: on }
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: terminal, from: out, target: apiserver, to: in }
+  - { source: apiserver, from: to-etcd, target: etcd, to: in }
+  - { source: apiserver, from: to-controller, target: controller, to: in }
+  - { source: controller, from: out, target: scheduler, to: in }
+  - { source: scheduler, from: out, target: kubelet, to: in }
+  - { source: kubelet, from: to-pods, target: pods, to: in }
