@@ -35,7 +35,6 @@ body {
   font-size: 14px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden; /* full-viewport app: no document scroll */
 }
 
 button, select {
@@ -47,6 +46,7 @@ button, select {
 
 .app {
   height: 100%;
+  overflow: hidden; /* experience shell is exactly one viewport; regions scroll internally */
   display: grid;
   /* minmax(0,…) lets rows shrink below their content's intrinsic width
      (the nowrap log strip would otherwise widen the whole grid). */
