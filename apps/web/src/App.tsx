@@ -1,10 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { loadDockerRunContent } from './content/loader';
 import { useSimulation } from './simulation/useSimulation';
 import { Canvas } from './components/Canvas';
 import { ControlsBar } from './components/ControlsBar';
 import { ExplanationPanel } from './components/ExplanationPanel';
 import { Timeline } from './components/Timeline';
+import { InspectorPanel } from './components/InspectorPanel';
 
 const content = loadDockerRunContent();
 
@@ -13,6 +14,15 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null);
   const { snapshot, player, events } = useSimulation(content.scenarios[scenarioId]);
   const currentEvent = snapshot.currentStep >= 0 ? events[snapshot.currentStep] : null;
+
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setSelected(null);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected]);
 
   const switchScenario = (id: 'pull' | 'cached') => {
     setScenarioId(id);
@@ -51,6 +61,14 @@ export default function App() {
             currentStep={snapshot.currentStep}
             totalSteps={events.length}
           />
+          {selected && content.concepts[selected] ? (
+            <InspectorPanel
+              componentId={selected}
+              concept={content.concepts[selected]}
+              runtime={snapshot.state.components[selected]}
+              onClose={() => setSelected(null)}
+            />
+          ) : null}
         </aside>
       </div>
       <footer className="app-transport">

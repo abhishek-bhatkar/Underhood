@@ -40,4 +40,18 @@ describe('App', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Step forward' }));
     expect(screen.getByTestId('step-counter').textContent).toMatch(/step 1 \/ 8/);
   });
+
+  it('inspecting the container shows concept content and live state', () => {
+    render(<App />);
+    // Advance to CONTAINER_RUNNING (last event of the pull scenario).
+    fireEvent.click(screen.getByRole('button', { name: /^Step 15:/i }));
+    // Click the created Container node on the canvas.
+    const containerNode =
+      screen.getByText("writable layer (container's own)").closest('.react-flow__node') ?? document.body;
+    fireEvent.click(containerNode);
+    const inspector = screen.getByText(/isolated set of processes/i).closest('section');
+    expect(inspector?.textContent).toMatch(/Container/);
+    expect(inspector?.textContent).toMatch(/nginx: master process/);
+    expect(inspector?.textContent).toMatch(/172\.17\.0\.2/);
+  });
 });
