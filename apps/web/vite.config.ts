@@ -1,7 +1,9 @@
 /// <reference types="vitest" />
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
-import { resolve } from 'node:path'
+import { fileURLToPath, URL } from 'node:url'
+
+const repoRoot = fileURLToPath(new URL('../..', import.meta.url))
 
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -9,7 +11,7 @@ export default defineConfig({
   server: {
     fs: {
       // Allow importing content YAML from the repo root (outside apps/web).
-      allow: [resolve(__dirname, '../..')],
+      allow: [repoRoot],
     },
   },
   optimizeDeps: {
