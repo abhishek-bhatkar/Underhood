@@ -1,0 +1,117 @@
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: out, type: source, pos: right }
+      - { id: display, type: target, pos: top }
+
+  - id: app
+    kind: panel
+    label: "Application (ring 3)"
+    position: { x: 300, y: 0 }
+    size: { w: 250, h: 175 }
+    lines:
+      - user space
+      - "own memory only"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: libc
+    kind: panel
+    label: libc
+    position: { x: 610, y: 0 }
+    size: { w: 250, h: 175 }
+    lines:
+      - "stdio · printf · buffers"
+      - "syscall wrappers"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+      - { id: back, type: target, pos: bottom }
+
+  - id: cpu
+    kind: panel
+    label: CPU
+    position: { x: 920, y: 0 }
+    size: { w: 240, h: 175 }
+    lines:
+      - "ring 3 · ring 0"
+      - hardware privilege
+    chips:
+      - { key: mode, text: "$value mode", variant: on }
+    handles:
+      - { id: in, type: target, pos: bottom }
+
+  - id: kernel
+    kind: group
+    label: "Kernel (ring 0)"
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: boundary
+    kind: panel
+    label: Syscall boundary
+    parent: kernel
+    position: { x: 30, y: 70 }
+    size: { w: 250, h: 170 }
+    lines:
+      - "syscall insn -> entry"
+      - "sysret -> ring 3"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: right }
+      - { id: back, type: source, pos: top, offset: "80%" }
+
+  - id: vfs
+    kind: panel
+    label: VFS
+    parent: kernel
+    position: { x: 350, y: 70 }
+    size: { w: 250, h: 170 }
+    lines:
+      - "path -> inode"
+      - "fd tables · permissions"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+      - { id: err, type: source, pos: top }
+
+  - id: page-cache
+    kind: panel
+    label: Page cache
+    parent: kernel
+    position: { x: 670, y: 70 }
+    size: { w: 220, h: 170 }
+    lines:
+      - "copy_from_user"
+      - "dirty pages -> disk later"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: tty
+    kind: panel
+    label: TTY driver
+    parent: kernel
+    position: { x: 950, y: 70 }
+    size: { w: 180, h: 170 }
+    lines:
+      - line discipline
+      - output bytes
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: top }
+
+edges:
+  - { source: terminal, from: out, target: app, to: in }
+  - { source: app, from: out, target: libc, to: in }
+  - { source: libc, from: out, target: boundary, to: in }
+  - { source: boundary, from: out, target: vfs, to: in }
+  - { source: vfs, from: out, target: page-cache, to: in }
+  - { source: page-cache, from: out, target: tty, to: in }
+  - { source: tty, from: out, target: terminal, to: display }
+  - { source: boundary, from: back, target: libc, to: back }
+  - { source: vfs, from: err, target: cpu, to: in }

@@ -1,0 +1,67 @@
+concepts:
+  terminal:
+    name: Terminal
+    summary: "Where the program runs and its output appears."
+    fields:
+      - { key: command, label: command }
+    details:
+      - "bash forks and execs your binary — itself a pair of syscalls."
+      - "The tty is a kernel device; the terminal emulator just draws it."
+
+  app:
+    name: Application (user space)
+    summary: "Your unprivileged code in ring 3 — its own memory, nothing else."
+    details:
+      - "Can compute freely, but must ask the kernel for I/O, memory, processes."
+      - "A page fault, interrupt, or syscall all suspend it into kernel context."
+      - "Sees files by name and fds — never disks or drivers."
+
+  libc:
+    name: libc
+    summary: "User-space library: stdio, formatting — and the syscall wrappers."
+    details:
+      - "printf buffers; write() is the real kernel interface."
+      - "Syscall wrappers set registers and execute the syscall instruction."
+      - "errno is set here from the kernel's negative return."
+
+  cpu:
+    name: CPU
+    summary: "Executes in one of two privilege levels: ring 3 (user) or ring 0 (kernel)."
+    fields:
+      - { key: mode, label: mode }
+    details:
+      - "The privilege level is hardware state, switched by traps and sysret."
+      - "Ring 0 can touch any memory and devices; ring 3 cannot."
+      - "One core alternates between levels thousands of times a second."
+
+  boundary:
+    name: Syscall boundary
+    summary: "The only door from user to kernel — a fixed entry point."
+    details:
+      - "syscall instruction + register convention (rax = syscall number)."
+      - "Entry code saves user registers and validates nothing about intent."
+      - "sysret restores user state exactly at the next instruction."
+
+  vfs:
+    name: VFS
+    summary: "Kernel layer that turns paths and fds into operations on the right filesystem."
+    details:
+      - "Per-process file table: fd -> open file description -> inode."
+      - "Permission checks compare file mode/uid against caller credentials."
+      - "Dispatches to ext4, procfs, tmpfs, device drivers — uniformly."
+
+  page-cache:
+    name: Page cache
+    summary: "Kernel memory cache of file contents — reads hit it, writes land in it."
+    details:
+      - "copy_to/from_user shuttles bytes across the boundary safely."
+      - "Dirty pages are flushed to disk later (writeback), not during write()."
+      - "It's why 'writing' a file can be faster than the disk."
+
+  tty:
+    name: TTY driver
+    summary: "Kernel device behind your terminal — line discipline and output."
+    details:
+      - "Writes to fd 1 end here for interactive programs."
+      - "Line discipline handles buffering, echo, signals (Ctrl-C)."
+      - "The terminal emulator reads tty state to draw characters."

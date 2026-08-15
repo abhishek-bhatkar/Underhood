@@ -1,0 +1,429 @@
+scenarios:
+  - id: write
+    name: write() syscall
+    components:
+      - id: terminal
+      - id: app
+      - id: libc
+      - id: cpu
+      - id: boundary
+      - id: vfs
+      - id: page-cache
+      - id: tty
+    events:
+      - type: PROGRAM_RUNS
+        source: terminal
+        target: app
+        duration: 900
+        payload:
+          command: ./hello
+        explanation:
+          title: "You run: ./hello"
+          body: >-
+            bash forks and execs your program. It lands in user space —
+            ring 3 on x86-64 — where it can only touch its own memory.
+            Everything else (files, network, the screen) requires asking
+            the kernel.
+          concept: "User space is a sandbox: your code runs unprivileged, by design."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: app
+            status: active
+          - op: set
+            component: cpu
+            data: { mode: user }
+          - op: label
+            component: app
+            text: "running (user space)"
+          - op: log
+            text: "$ ./hello"
+
+      - type: PRINTF_CALLS
+        source: app
+        target: libc
+        duration: 800
+        payload:
+          text: "hello\n"
+        explanation:
+          title: "printf buffers, then calls write()"
+          body: >-
+            printf is plain user-space code in libc. It formats into a
+            stdio buffer and, when the buffer fills or the stream ends,
+            calls the real kernel interface: write(1, buf, 6).
+          concept: "Library functions are user-space convenience — only the syscall crosses the boundary."
+        effects:
+          - op: status
+            component: libc
+            status: active
+          - op: label
+            component: app
+            text: "printf(\"hello\\n\")"
+          - op: label
+            component: libc
+            text: "write(1, buf, 6)"
+          - op: log
+            text: "libc: write(fd=1, len=6)"
+
+      - type: SYSCALL_ENTERED
+        source: libc
+        target: boundary
+        duration: 800
+        explanation:
+          title: "The syscall instruction: into ring 0"
+          body: >-
+            libc puts 1 (SYS_write) in rax, the args in registers, and
+            executes the syscall instruction. The CPU switches to kernel
+            mode and jumps to a fixed entry point — user code chose the
+            door, but only the kernel decides what's behind it.
+          concept: "The boundary is hardware-enforced: syscalls are the only doors into the kernel."
+        effects:
+          - op: status
+            component: boundary
+            status: active
+          - op: set
+            component: cpu
+            data: { mode: kernel }
+          - op: label
+            component: boundary
+            text: "syscall -> entry point (ring 0)"
+          - op: log
+            text: "trap: syscall, cpu -> kernel mode"
+
+      - type: FD_RESOLVED
+        source: boundary
+        target: vfs
+        duration: 800
+        explanation:
+          title: "fd 1 resolves through the VFS"
+          body: >-
+            The kernel's sys_write looks up file descriptor 1 in this
+            process's file table — an open description pointing at the
+            terminal — and hands the request to the virtual filesystem,
+            which dispatches to the right driver.
+          concept: "A file descriptor is just a table index — the kernel dereferences it, user space can't."
+        effects:
+          - op: status
+            component: vfs
+            status: active
+          - op: label
+            component: vfs
+            text: "fd 1 -> /dev/tty"
+          - op: log
+            text: "vfs: fd 1 resolves to the tty"
+
+      - type: USER_COPY
+        source: vfs
+        target: page-cache
+        duration: 800
+        payload:
+          len: 6
+        explanation:
+          title: "copy_from_user: 6 bytes"
+          body: >-
+            The kernel cannot trust the user pointer — it copies the six
+            bytes into kernel memory first, page by page, faulting in any
+            pages that aren't resident. Only then is the data safe to act
+            on.
+          concept: "The kernel validates and copies everything user space hands it — trust ends at the boundary."
+        effects:
+          - op: status
+            component: page-cache
+            status: active
+          - op: label
+            component: page-cache
+            text: "6 bytes buffered"
+          - op: log
+            text: "copy_from_user: $payload.len bytes"
+
+      - type: WRITTEN_TO_TTY
+        source: page-cache
+        target: tty
+        duration: 800
+        explanation:
+          title: "Terminal driver emits the bytes"
+          body: >-
+            The tty driver writes "hello" to the console. For a file
+            instead, the data would sit in the page cache as dirty pages,
+            written back to disk later.
+          concept: "Writes to files are usually 'done' before they touch disk — the page cache absorbs them."
+        effects:
+          - op: status
+            component: tty
+            status: active
+          - op: label
+            component: tty
+            text: "emitting 'hello'"
+          - op: log
+            text: "tty: output written"
+
+      - type: OUTPUT_SHOWN
+        source: tty
+        target: terminal
+        duration: 700
+        explanation:
+          title: "Output appears: hello"
+          body: >-
+            The bytes reach the terminal emulator and the user sees the
+            greeting. Meanwhile the kernel is preparing the return path.
+          concept: "What felt instant was a privilege transition, table lookup, memory copy, and driver call."
+        effects:
+          - op: log
+            text: "hello"
+          - op: label
+            component: terminal
+            text: "hello"
+          - op: status
+            component: tty
+            status: done
+
+      - type: RETURNED
+        source: boundary
+        target: libc
+        duration: 800
+        payload:
+          ret: 6
+        explanation:
+          title: "Return to user space: 6"
+          body: >-
+            sys_write returns 6 — the count written — via the return
+            register, and the kernel executes sysret: back to ring 3,
+            exactly where the process left off.
+          concept: "Syscall returns land at the instruction after the trap — as if nothing happened, except something did."
+        effects:
+          - op: set
+            component: cpu
+            data: { mode: user }
+          - op: label
+            component: boundary
+            text: "sysret -> ring 3"
+          - op: label
+            component: libc
+            text: "write returned $payload.ret"
+          - op: log
+            text: "return: $payload.ret (user mode)"
+
+      - type: SETTLED
+        source: app
+        target: app
+        duration: 700
+        explanation:
+          title: "Program continues, then exits"
+          body: >-
+            printf returns to main, main returns, exit() — another syscall
+            — tears the process down. Every one of those steps crossed the
+            same boundary you just watched.
+          concept: "A process spends its life alternating between user computation and kernel service."
+        effects:
+          - op: status
+            component: app
+            status: done
+          - op: status
+            component: libc
+            status: done
+          - op: status
+            component: boundary
+            status: done
+          - op: status
+            component: vfs
+            status: done
+          - op: status
+            component: page-cache
+            status: done
+          - op: label
+            component: app
+            text: "exit(0)"
+          - op: log
+            text: "process exited (status 0)"
+
+  - id: permission-denied
+    name: Permission denied
+    components:
+      - id: terminal
+      - id: app
+      - id: libc
+      - id: cpu
+      - id: boundary
+      - id: vfs
+      - id: page-cache
+      - id: tty
+    events:
+      - type: PROGRAM_RUNS
+        source: terminal
+        target: app
+        duration: 900
+        payload:
+          command: ./reader /etc/shadow
+        explanation:
+          title: "You run: ./reader /etc/shadow"
+          body: >-
+            Your program tries to open the shadow password file, which is
+            readable only by root. Watch where the kernel says no — and
+            how it reports it.
+          concept: "Failure scenarios cross the same boundary; the answer just comes back negative."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: app
+            status: active
+          - op: set
+            component: cpu
+            data: { mode: user }
+          - op: label
+            component: app
+            text: "running (user space)"
+          - op: log
+            text: "$ ./reader /etc/shadow"
+
+      - type: OPEN_REQUESTED
+        source: app
+        target: libc
+        duration: 800
+        payload:
+          path: /etc/shadow
+        explanation:
+          title: "fopen → open(\"/etc/shadow\", O_RDONLY)"
+          body: >-
+            stdio's fopen wraps the open syscall. Nothing has checked
+            permissions yet — the path is just a user-space string until
+            the kernel looks at it.
+          concept: "Permissions are kernel data: user space can claim anything; only the kernel's answer counts."
+        effects:
+          - op: status
+            component: libc
+            status: active
+          - op: label
+            component: libc
+            text: "open(\"$payload.path\", O_RDONLY)"
+          - op: log
+            text: "libc: open($payload.path, O_RDONLY)"
+
+      - type: SYSCALL_ENTERED
+        source: libc
+        target: boundary
+        duration: 800
+        explanation:
+          title: "Trap into the kernel"
+          body: >-
+            Same door as always: syscall instruction, ring 0, fixed entry
+            point. The kernel begins resolving the path.
+          concept: "The boundary doesn't judge — the logic behind it does."
+        effects:
+          - op: status
+            component: boundary
+            status: active
+          - op: set
+            component: cpu
+            data: { mode: kernel }
+          - op: label
+            component: boundary
+            text: "syscall -> ring 0"
+          - op: log
+            text: "trap: syscall open"
+
+      - type: PERMISSION_CHECK
+        source: boundary
+        target: vfs
+        duration: 800
+        explanation:
+          title: "VFS walks the path and checks permissions"
+          body: >-
+            The kernel resolves each component of /etc/shadow to an inode,
+            then compares the file's mode bits and owning uid against the
+            process's credentials. Your uid is not root, and the mode says
+            root-only.
+          concept: "The check uses the caller's credentials — setuid binaries are the exception, not the rule."
+        effects:
+          - op: status
+            component: vfs
+            status: active
+          - op: label
+            component: vfs
+            text: "uid=1000 vs mode 640 root:shadow"
+          - op: log
+            text: "vfs: permission check failed"
+
+      - type: EACCES
+        source: vfs
+        target: boundary
+        duration: 800
+        explanation:
+          title: "-EACCES: the open is refused"
+          body: >-
+            No file descriptor is created. The kernel returns the negative
+            errno EACCES — a refusal, not a crash. The system call
+            contract makes failures ordinary return values.
+          concept: "Errors are values: the kernel refuses politely and lets user space decide what to do."
+        effects:
+          - op: status
+            component: vfs
+            status: error
+          - op: label
+            component: vfs
+            text: "-EACCES"
+          - op: log
+            text: "open(/etc/shadow) -> -1 (EACCES)"
+
+      - type: ERRNO_SET
+        source: boundary
+        target: libc
+        duration: 800
+        explanation:
+          title: "Back in user space: errno = EACCES"
+          body: >-
+            The syscall returns -1 and libc records errno. fopen yields
+            NULL. Your program hasn't died — it's standing at the same
+            instruction after the trap, holding an error.
+          concept: "errno is the kernel's refusal, remembered in user space."
+        effects:
+          - op: set
+            component: cpu
+            data: { mode: user }
+          - op: status
+            component: boundary
+            status: done
+          - op: label
+            component: boundary
+            text: "sysret -> ring 3"
+          - op: label
+            component: libc
+            text: "-1, errno=EACCES"
+          - op: log
+            text: "return: -1 (user mode)"
+
+      - type: APP_HANDLES
+        source: app
+        target: app
+        duration: 700
+        explanation:
+          title: "perror: Permission denied"
+          body: >-
+            The program checks fopen's NULL, calls perror, and exits with
+            status 1. The failure traveled the full round trip — request,
+            refusal, error code, handling — without anything crashing.
+          concept: "Well-behaved programs treat syscall failure as control flow, not catastrophe."
+        effects:
+          - op: status
+            component: app
+            status: done
+          - op: status
+            component: libc
+            status: done
+          - op: status
+            component: vfs
+            status: done
+          - op: label
+            component: app
+            text: "perror + exit(1)"
+          - op: log
+            text: "reader: /etc/shadow: Permission denied"

@@ -1,0 +1,10 @@
+title: What happens when a program makes a system call?
+summary: >-
+  A printf in user space becomes a write() in libc, which traps across the
+  user/kernel boundary into ring 0. The kernel resolves file descriptor 1,
+  copies the bytes from user memory, routes them through the VFS to the
+  terminal driver, and returns — the whole trip in microseconds.
+abstraction: >-
+  Simplified teaching model: no page-fault detail, one CPU shown, write-back
+  of dirty pages compressed to a note; x86-64 convention assumed (syscall
+  instruction, ring 3 → ring 0).
