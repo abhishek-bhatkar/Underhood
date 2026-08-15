@@ -4,6 +4,8 @@ A visual learning engine for understanding how technical systems actually work.
 
 > **Don't just read how it works. Watch it work.**
 
+**Try it live: <https://abhishek-bhatkar.github.io/Underhood/>**
+
 One engine, many systems. Each topic is **content** — components, event
 sequences, and explanations as validated YAML — rendered by the same
 simulation engine and UI. Every experience has a happy-path scenario plus a
@@ -43,12 +45,15 @@ npm run build      # production build of the web app
 
 ## Try this
 
-1. From the home page, open an experience and press **play**.
+Open the live site (or `npm run dev` locally), pick a topic from the home
+page, and:
+
+1. Press **play** and watch the simulation run.
 2. **Step** through events one at a time; the right panel explains each.
 3. **Click any component** to inspect it — including live state as the
    simulation progresses.
 4. Switch **scenarios** (Pull image vs Image cached, Run program vs Stack
-   overflow) and watch the same machinery take a different path.
+   overflow, …) and watch the same machinery take a different path.
 5. Scrub the **timeline** at the bottom to jump to any event.
 
 ## Architecture
