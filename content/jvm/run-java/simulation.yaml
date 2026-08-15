@@ -78,6 +78,9 @@ scenarios:
           - op: label
             component: javac
             text: bytecode emitted
+          - op: status
+            component: javac
+            status: done
           - op: log
             text: "written: Hello.class (portable bytecode, not native code)"
 
@@ -456,6 +459,12 @@ scenarios:
           - op: label
             component: engine
             text: JVM exiting
+          - op: status
+            component: method-area
+            status: done
+          - op: status
+            component: heap
+            status: done
           - op: log
             text: "main() returned — program exited (code 0)"
 
@@ -533,6 +542,9 @@ scenarios:
           - op: label
             component: javac
             text: bytecode emitted
+          - op: status
+            component: javac
+            status: done
           - op: log
             text: "written: Hello.class (recursive compute)"
 
@@ -693,6 +705,15 @@ scenarios:
             text: thread terminated
           - op: status
             component: terminal
+            status: done
+          - op: status
+            component: method-area
+            status: done
+          - op: status
+            component: heap
+            status: done
+          - op: status
+            component: classfile
             status: done
           - op: log
             text: "Process finished with exit code 1"
