@@ -17,4 +17,4 @@ export {
   parseOverviewYaml,
   parseSimulationYaml,
 } from './scenario';
-export type { ConceptDef, EventDef, OverviewDef, ScenarioDef } from './scenario';
+export type { ConceptDef, ConceptField, EventDef, OverviewDef, ScenarioDef } from './scenario';

@@ -2,6 +2,8 @@ concepts:
   terminal:
     name: Terminal
     summary: "Where you type docker commands; shows the command and the resulting log."
+    fields:
+      - { key: command, label: command }
     details:
       - "Your shell is just the messenger — it runs the docker binary and shows its output."
       - "The docker CLI exits after the API call; the container keeps running without it."
@@ -37,6 +39,8 @@ concepts:
   image-store:
     name: Local image store
     summary: "The daemon's content store of read-only image layers on disk."
+    fields:
+      - { key: layers, label: "layers pulled", list: true }
     details:
       - "Layers live in /var/lib/docker/overlay2, deduplicated by digest."
       - "Two images sharing a base layer store that blob exactly once."
@@ -46,6 +50,13 @@ concepts:
   container:
     name: Container
     summary: "An isolated set of processes running from an image, with a writable layer on top."
+    fields:
+      - { key: containerId, label: id }
+      - { key: network, label: network }
+      - { key: ip, label: ip }
+      - { key: pid, label: pid }
+      - { key: process, label: process }
+      - { key: running, label: running }
     details:
       - "Image layers stay read-only; every container adds its own thin writable layer (overlayfs)."
       - "Isolation = namespaces (PID, mount, network, UTS, IPC) + cgroups for resource limits."

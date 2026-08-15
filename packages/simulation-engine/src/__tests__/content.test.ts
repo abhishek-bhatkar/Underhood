@@ -7,6 +7,7 @@ import {
   parseOverviewYaml,
   materializeEvents,
 } from '../scenario';
+import { deriveState } from '../fold';
 
 const contentDir = resolve(__dirname, '../../../../content/docker/docker-run');
 const read = (name: string) => readFileSync(resolve(contentDir, name), 'utf8');
@@ -54,5 +55,27 @@ describe('docker-run content', () => {
         if (e.target) expect(known.has(e.target), `unknown target ${e.target}`).toBe(true);
       }
     }
+  });
+
+  it('declarative effects reproduce the full docker-run lifecycle', () => {
+    const [pull] = parseSimulationYaml(read('simulation.yaml'));
+    const events = materializeEvents(pull);
+    const s = deriveState(events, events.length - 1, pull.components);
+    expect(s.components.container).toMatchObject({
+      status: 'done',
+      data: expect.objectContaining({
+        containerId: 'e4f5a6b7c8',
+        ip: '172.17.0.2',
+        pid: 1,
+        running: true,
+      }),
+    });
+    expect((s.components['image-store'].data.layers as unknown[]).length).toBe(4);
+    expect((s.components.container.data.stack as unknown[]).length).toBe(5);
+    expect(s.log.map((l) => l.text)).toContain('STATUS: Running — nginx is up');
+    // Mid-simulation rewind is clean.
+    const mid = deriveState(events, 3, pull.components);
+    expect(mid.components.container.status).toBe('absent');
+    expect(mid.components.container.data.containerId).toBeUndefined();
   });
 });

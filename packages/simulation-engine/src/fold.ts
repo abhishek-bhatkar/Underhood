@@ -30,9 +30,22 @@ function tpl(text: string, payload: Record<string, unknown> | undefined): string
   });
 }
 
-/** Deeply template every string in a value (objects, arrays, primitives). */
+const EXACT_REF = /^\$payload\.(\w+)$/;
+
+/**
+ * Deeply template every string in a value (objects, arrays, primitives).
+ * A string that is exactly "$payload.key" passes the raw (typed) value
+ * through, so numbers and booleans survive `set`/`push`.
+ */
 function tplDeep(value: unknown, payload: Record<string, unknown> | undefined): unknown {
-  if (typeof value === 'string') return tpl(value, payload);
+  if (typeof value === 'string') {
+    const exact = value.match(EXACT_REF);
+    if (exact) {
+      const raw = payload?.[exact[1]];
+      return raw === undefined ? '' : raw;
+    }
+    return tpl(value, payload);
+  }
   if (Array.isArray(value)) return value.map((v) => tplDeep(v, payload));
   if (value && typeof value === 'object') {
     return Object.fromEntries(

@@ -1,6 +1,16 @@
+# Docker run nginx — event sequences as data.
+# State transitions are declarative `effects` interpreted by the engine.
 scenarios:
   - id: pull
     name: Pull image
+    components:
+      - id: terminal
+      - id: cli
+      - id: daemon
+      - id: registry
+      - id: image-store
+      - id: container
+        initial: absent
     events:
       - type: COMMAND_ENTERED
         source: terminal
@@ -18,6 +28,21 @@ scenarios:
           concept: >-
             docker run is shorthand for two API calls: create a container,
             then start it.
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: cli
+            status: active
+          - op: label
+            component: cli
+            text: parsing command
+          - op: log
+            text: "$ $payload.command"
 
       - type: CLI_REQUEST
         source: cli
@@ -36,6 +61,21 @@ scenarios:
           concept: >-
             The CLI is not the container. The daemon (dockerd) performs all
             the work.
+        effects:
+          - op: status
+            component: cli
+            status: active
+          - op: label
+            component: cli
+            text: "$payload.method $payload.path"
+          - op: status
+            component: daemon
+            status: active
+          - op: label
+            component: daemon
+            text: handling API request
+          - op: log
+            text: "cli -> daemon: $payload.method $payload.path"
 
       - type: IMAGE_LOOKUP
         source: daemon
@@ -50,6 +90,18 @@ scenarios:
             store: is there an image named nginx:latest on this machine?
             Images are stored as content-addressed layers, not single files.
           concept: Local first — the daemon only pulls from a registry if the image is missing.
+        effects:
+          - op: status
+            component: daemon
+            status: active
+          - op: label
+            component: daemon
+            text: "checking local image store…"
+          - op: status
+            component: image-store
+            status: active
+          - op: log
+            text: "daemon: looking for image locally"
 
       - type: IMAGE_MISS
         source: image-store
@@ -65,6 +117,15 @@ scenarios:
             back to pulling the image from a registry — no separate
             "docker pull" needed.
           concept: docker run = pull (if needed) + create + start.
+        effects:
+          - op: status
+            component: image-store
+            status: idle
+          - op: label
+            component: daemon
+            text: image not found locally
+          - op: log
+            text: "Unable to find image 'nginx:latest' locally"
 
       - type: REGISTRY_REQUEST
         source: daemon
@@ -81,6 +142,18 @@ scenarios:
           concept: >-
             A registry stores manifests and layer blobs, each addressed by
             the SHA-256 of its content.
+        effects:
+          - op: label
+            component: daemon
+            text: contacting registry
+          - op: status
+            component: registry
+            status: active
+          - op: label
+            component: registry
+            text: "auth + manifest"
+          - op: log
+            text: "daemon -> $payload.registry: auth, fetch manifest"
 
       - type: MANIFEST_FETCHED
         source: registry
@@ -95,6 +168,12 @@ scenarios:
             filesystem layers. We show four conceptual layers here — a real
             nginx:latest manifest lists more, with the same mechanics.
           concept: An image is a stack of layers, not a single disk image.
+        effects:
+          - op: label
+            component: registry
+            text: "manifest: $payload.layers layers"
+          - op: log
+            text: "manifest fetched ($payload.layers layers)"
 
       - type: LAYER_PULL
         source: registry
@@ -103,7 +182,7 @@ scenarios:
         payload:
           layerIndex: 1
           total: 4
-          name: base image (debian bookworm-slim)
+          name: "base image (debian bookworm-slim)"
           digest: fbcc8b0e63f2
         explanation:
           title: "Pulling layer 1/4: base image"
@@ -113,6 +192,29 @@ scenarios:
             SHA-256 digest in the manifest, and unpacks it into the local
             content store.
           concept: Layers are cached — a second nginx pull, or any other image built on bookworm-slim, reuses this blob.
+        effects: &layer-pull-effects
+          - op: status
+            component: image-store
+            status: active
+          - op: label
+            component: image-store
+            text: "pulling layer $payload.layerIndex/$payload.total"
+          - op: push
+            component: image-store
+            key: layers
+            value:
+              layerIndex: "$payload.layerIndex"
+              total: "$payload.total"
+              name: "$payload.name"
+              digest: "$payload.digest"
+          - op: status
+            component: registry
+            status: active
+          - op: label
+            component: registry
+            text: "serving blob $payload.digest"
+          - op: log
+            text: "$payload.digest: Pull complete"
 
       - type: LAYER_PULL
         source: registry
@@ -121,7 +223,7 @@ scenarios:
         payload:
           layerIndex: 2
           total: 4
-          name: base distribution (apt packages)
+          name: "base distribution (apt packages)"
           digest: 6d3ec210a9c4
         explanation:
           title: "Pulling layer 2/4: distribution packages"
@@ -130,6 +232,7 @@ scenarios:
             utilities the server needs. It only contains the diff from the
             layer below — files added or changed by that build step.
           concept: Each layer is a diff on top of the previous one.
+        effects: *layer-pull-effects
 
       - type: LAYER_PULL
         source: registry
@@ -138,7 +241,7 @@ scenarios:
         payload:
           layerIndex: 3
           total: 4
-          name: nginx binaries
+          name: "nginx binaries"
           digest: 3b1aef7c2d90
         explanation:
           title: "Pulling layer 3/4: nginx binaries"
@@ -149,6 +252,7 @@ scenarios:
           concept: >-
             Content addressing makes pulls resumable and layers shareable
             between images.
+        effects: *layer-pull-effects
 
       - type: LAYER_PULL
         source: registry
@@ -157,7 +261,7 @@ scenarios:
         payload:
           layerIndex: 4
           total: 4
-          name: nginx configuration
+          name: "nginx configuration"
           digest: 9f2e4a1c8b77
         explanation:
           title: "Pulling layer 4/4: configuration"
@@ -166,6 +270,7 @@ scenarios:
             script. All four blobs are now stored locally, read-only, under
             /var/lib/docker. This is what "having an image" means.
           concept: Image layers are immutable and read-only — forever.
+        effects: *layer-pull-effects
 
       - type: IMAGE_READY
         source: image-store
@@ -182,6 +287,23 @@ scenarios:
           concept: >-
             An image is a template: a locked, read-only stack of layers plus
             config.
+        effects:
+          - op: status
+            component: image-store
+            status: done
+          - op: label
+            component: image-store
+            text: image ready
+          - op: status
+            component: registry
+            status: done
+          - op: label
+            component: registry
+          - op: label
+            component: daemon
+            text: "image $payload.image ready"
+          - op: log
+            text: "Status: Downloaded newer image for $payload.image"
 
       - type: CONTAINER_CREATED
         source: daemon
@@ -189,7 +311,6 @@ scenarios:
         duration: 1100
         payload:
           containerId: e4f5a6b7c8
-          writableLayer: true
         explanation:
           title: "Container created: e4f5a6b7c8"
           body: >-
@@ -200,6 +321,43 @@ scenarios:
           concept: >-
             Image vs container: the image is the template; the container is
             an instance of it with its own writable layer.
+        effects:
+          - op: status
+            component: container
+            status: active
+          - op: set
+            component: container
+            data:
+              containerId: "$payload.containerId"
+              writableLayer: true
+          - op: push
+            component: container
+            key: stack
+            value: { label: "base image", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "distro packages", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "nginx binaries", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "nginx config", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "writable layer (container's own)", variant: writable }
+          - op: label
+            component: container
+            text: container created
+          - op: label
+            component: daemon
+            text: container created
+          - op: log
+            text: "container $payload.containerId created (writable layer added)"
 
       - type: NETWORK_ATTACHED
         source: daemon
@@ -220,6 +378,18 @@ scenarios:
           concept: >-
             Container networking is real Linux networking: namespace + veth
             pair + bridge, not a simulation.
+        effects:
+          - op: set
+            component: container
+            data:
+              ip: "$payload.ip"
+              network: "$payload.network"
+              veth: "$payload.veth"
+          - op: label
+            component: container
+            text: "network: $payload.network"
+          - op: log
+            text: "connected to bridge ($payload.veth) -> $payload.ip"
 
       - type: PROCESS_STARTED
         source: container
@@ -239,6 +409,17 @@ scenarios:
           concept: >-
             A container is not a miniature VM — it is a set of isolated
             processes sharing the host kernel.
+        effects:
+          - op: set
+            component: container
+            data:
+              pid: "$payload.pid"
+              process: "$payload.process"
+          - op: label
+            component: container
+            text: "PID $payload.pid: $payload.process"
+          - op: log
+            text: "PID 1 started: $payload.process"
 
       - type: CONTAINER_RUNNING
         source: container
@@ -256,9 +437,43 @@ scenarios:
           concept: >-
             The daemon stays responsible for the container's whole life —
             the CLI can exit and the container keeps running.
+        effects:
+          - op: status
+            component: container
+            status: done
+          - op: set
+            component: container
+            data: { running: true }
+          - op: label
+            component: container
+            text: running
+          - op: status
+            component: daemon
+            status: done
+          - op: label
+            component: daemon
+            text: supervising
+          - op: status
+            component: cli
+            status: done
+          - op: label
+            component: cli
+          - op: status
+            component: terminal
+            status: done
+          - op: log
+            text: "STATUS: Running — nginx is up"
 
   - id: cached
     name: Image cached
+    components:
+      - id: terminal
+      - id: cli
+      - id: daemon
+      - id: registry
+      - id: image-store
+      - id: container
+        initial: absent
     events:
       - type: COMMAND_ENTERED
         source: terminal
@@ -272,6 +487,21 @@ scenarios:
             Second run of the same command on a machine that already has the
             image. Watch how much of the pipeline is skipped.
           concept: Same command, different path — the local store decides.
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: cli
+            status: active
+          - op: label
+            component: cli
+            text: parsing command
+          - op: log
+            text: "$ $payload.command"
 
       - type: CLI_REQUEST
         source: cli
@@ -287,6 +517,21 @@ scenarios:
             over the Unix socket. The daemon, not the CLI, decides what
             happens next.
           concept: The client/server split never changes.
+        effects:
+          - op: status
+            component: cli
+            status: active
+          - op: label
+            component: cli
+            text: "$payload.method $payload.path"
+          - op: status
+            component: daemon
+            status: active
+          - op: label
+            component: daemon
+            text: handling API request
+          - op: log
+            text: "cli -> daemon: $payload.method $payload.path"
 
       - type: IMAGE_LOOKUP
         source: daemon
@@ -300,6 +545,18 @@ scenarios:
             The daemon checks the local content store for nginx:latest —
             exactly the same lookup as before.
           concept: The lookup is the branch point of docker run.
+        effects:
+          - op: status
+            component: daemon
+            status: active
+          - op: label
+            component: daemon
+            text: "checking local image store…"
+          - op: status
+            component: image-store
+            status: active
+          - op: log
+            text: "daemon: looking for image locally"
 
       - type: IMAGE_HIT
         source: image-store
@@ -314,6 +571,15 @@ scenarios:
             the registry is never contacted. No bytes move over the network;
             creation starts immediately.
           concept: Layer caching is what makes repeat runs fast.
+        effects:
+          - op: status
+            component: image-store
+            status: done
+          - op: label
+            component: daemon
+            text: image found locally
+          - op: log
+            text: "Image nginx:latest found in local store"
 
       - type: CONTAINER_CREATED
         source: daemon
@@ -321,7 +587,6 @@ scenarios:
         duration: 1100
         payload:
           containerId: b9c8d7e6f5
-          writableLayer: true
         explanation:
           title: "Container created: b9c8d7e6f5"
           body: >-
@@ -329,6 +594,43 @@ scenarios:
             read-only image layers. Two containers from one image share every
             image layer and diverge only in their writable tops.
           concept: One image, many containers — each with its own writable layer.
+        effects:
+          - op: status
+            component: container
+            status: active
+          - op: set
+            component: container
+            data:
+              containerId: "$payload.containerId"
+              writableLayer: true
+          - op: push
+            component: container
+            key: stack
+            value: { label: "base image", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "distro packages", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "nginx binaries", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "nginx config", variant: image }
+          - op: push
+            component: container
+            key: stack
+            value: { label: "writable layer (container's own)", variant: writable }
+          - op: label
+            component: container
+            text: container created
+          - op: label
+            component: daemon
+            text: container created
+          - op: log
+            text: "container $payload.containerId created (writable layer added)"
 
       - type: NETWORK_ATTACHED
         source: daemon
@@ -345,6 +647,18 @@ scenarios:
             next free address. Both containers are on docker0 and can talk to
             each other by IP.
           concept: Every container gets its own network namespace and IP.
+        effects:
+          - op: set
+            component: container
+            data:
+              ip: "$payload.ip"
+              network: "$payload.network"
+              veth: "$payload.veth"
+          - op: label
+            component: container
+            text: "network: $payload.network"
+          - op: log
+            text: "connected to bridge ($payload.veth) -> $payload.ip"
 
       - type: PROCESS_STARTED
         source: container
@@ -359,6 +673,17 @@ scenarios:
             Namespaces, cgroups, assembled filesystem — then nginx starts as
             PID 1 in the new container, isolated from the first one.
           concept: Isolation comes from namespaces and cgroups, one set per container.
+        effects:
+          - op: set
+            component: container
+            data:
+              pid: "$payload.pid"
+              process: "$payload.process"
+          - op: label
+            component: container
+            text: "PID $payload.pid: $payload.process"
+          - op: log
+            text: "PID 1 started: $payload.process"
 
       - type: CONTAINER_RUNNING
         source: container
@@ -372,3 +697,29 @@ scenarios:
             Done — and noticeably faster, because the entire pull phase was
             skipped by a cache hit.
           concept: Cached layers + local creation = sub-second starts.
+        effects:
+          - op: status
+            component: container
+            status: done
+          - op: set
+            component: container
+            data: { running: true }
+          - op: label
+            component: container
+            text: running
+          - op: status
+            component: daemon
+            status: done
+          - op: label
+            component: daemon
+            text: supervising
+          - op: status
+            component: cli
+            status: done
+          - op: label
+            component: cli
+          - op: status
+            component: terminal
+            status: done
+          - op: log
+            text: "STATUS: Running — nginx is up"

@@ -56,10 +56,17 @@ const scenarioDefSchema = z.object({
 
 const simulationFileSchema = z.object({ scenarios: z.array(scenarioDefSchema).min(1) });
 
+const conceptFieldSchema = z.object({
+  key: z.string().min(1),
+  label: z.string().min(1),
+  list: z.boolean().optional(),
+});
+
 const conceptDefSchema = z.object({
   name: z.string().min(1),
   summary: z.string().min(1),
   details: z.array(z.string().min(1)).min(1),
+  fields: z.array(conceptFieldSchema).optional(),
 });
 
 const conceptsFileSchema = z.object({
@@ -88,10 +95,17 @@ export interface ScenarioDef {
   events: EventDef[];
 }
 
+export interface ConceptField {
+  key: string;
+  label: string;
+  list?: boolean;
+}
+
 export interface ConceptDef {
   name: string;
   summary: string;
   details: string[];
+  fields?: ConceptField[];
 }
 
 export interface OverviewDef {

@@ -1,0 +1,92 @@
+# Visual layout for the docker-run experience — consumed by the generic canvas.
+# kinds: terminal | panel | stack | list | group
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: out, type: source, pos: right }
+
+  - id: cli
+    kind: panel
+    position: { x: 300, y: 10 }
+    size: { w: 230, h: 150 }
+    lines:
+      - client binary
+      - unix:///var/run/docker.sock
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: bottom }
+
+  - id: registry
+    kind: panel
+    position: { x: 900, y: 0 }
+    size: { w: 270, h: 160 }
+    lines:
+      - registry-1.docker.io
+      - library/nginx:latest
+      - "manifest · layer blobs"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: bottom, offset: "50%" }
+
+  - id: docker-host
+    kind: group
+    label: Docker Host
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: daemon
+    kind: panel
+    parent: docker-host
+    position: { x: 40, y: 60 }
+    size: { w: 270, h: 200 }
+    lines:
+      - dockerd
+      - "REST API · image store"
+      - "containerd · runc"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: to-registry, type: source, pos: right }
+      - { id: to-store, type: source, pos: bottom, offset: "30%" }
+      - { id: to-container, type: source, pos: bottom, offset: "70%" }
+
+  - id: image-store
+    kind: stack
+    parent: docker-host
+    position: { x: 380, y: 70 }
+    size: { w: 310, h: 320 }
+    key: layers
+    slots: 4
+    emptyLabel: "layer $index — empty"
+    itemTemplate: "$value.name"
+    subTemplate: "$value.digest"
+    handles:
+      - { id: from-registry, type: target, pos: top, offset: "50%" }
+      - { id: from-daemon, type: target, pos: left }
+      - { id: ready, type: source, pos: top, offset: "80%" }
+
+  - id: container
+    kind: stack
+    parent: docker-host
+    position: { x: 790, y: 60 }
+    size: { w: 330, h: 340 }
+    key: stack
+    variantKey: variant
+    itemTemplate: "$value.label"
+    chips:
+      - { key: ip, text: "IP $value", variant: net }
+      - { key: pid, text: "PID $value · nginx", variant: pid }
+      - { key: running, text: running, variant: on }
+    footerKey: containerId
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: terminal, from: out, target: cli, to: in }
+  - { source: cli, from: out, target: daemon, to: in }
+  - { source: daemon, from: to-registry, target: registry, to: in }
+  - { source: registry, from: out, target: image-store, to: from-registry }
+  - { source: daemon, from: to-store, target: image-store, to: from-daemon }
+  - { source: daemon, from: to-container, target: container, to: in }
