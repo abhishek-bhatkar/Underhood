@@ -1,0 +1,94 @@
+nodes:
+  - id: client
+    kind: terminal
+    label: Clients
+    position: { x: 0, y: 60 }
+    size: { w: 250, h: 190 }
+    handles:
+      - { id: out, type: source, pos: right }
+      - { id: result, type: target, pos: bottom }
+
+  - id: prod
+    kind: group
+    label: Production
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: lb
+    kind: panel
+    label: Load Balancer
+    parent: prod
+    position: { x: 30, y: 70 }
+    size: { w: 220, h: 160 }
+    lines:
+      - least connections
+      - health checks
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: right }
+
+  - id: api
+    kind: list
+    label: API instances
+    parent: prod
+    position: { x: 310, y: 60 }
+    size: { w: 260, h: 330 }
+    key: instances
+    emptyLabel: "no instances yet"
+    itemTemplate: "$value.label"
+    absentLabel: "scaled to zero"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: to-cache, type: source, pos: right, offset: "25%" }
+      - { id: to-db, type: source, pos: right, offset: "75%" }
+      - { id: to-client, type: source, pos: bottom }
+      - { id: from-cache, type: target, pos: right, offset: "60%" }
+
+  - id: cache
+    kind: list
+    label: "Cache (Redis)"
+    parent: prod
+    position: { x: 650, y: 60 }
+    size: { w: 230, h: 150 }
+    key: entries
+    emptyLabel: "no entries yet"
+    itemTemplate: "$value.label"
+    absentLabel: "fills on first request"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: left, offset: "75%" }
+
+  - id: db
+    kind: list
+    label: Primary DB
+    parent: prod
+    position: { x: 650, y: 250 }
+    size: { w: 230, h: 140 }
+    key: rows
+    emptyLabel: "no rows touched"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-replica, type: source, pos: bottom }
+
+  - id: replica
+    kind: panel
+    label: Replica DB
+    parent: prod
+    position: { x: 940, y: 250 }
+    size: { w: 190, h: 140 }
+    lines:
+      - "streams from primary"
+    chips:
+      - { key: role, text: "$value", variant: on }
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: client, from: out, target: lb, to: in }
+  - { source: lb, from: out, target: api, to: in }
+  - { source: api, from: to-cache, target: cache, to: in }
+  - { source: cache, from: out, target: api, to: from-cache }
+  - { source: api, from: to-db, target: db, to: in }
+  - { source: db, from: to-replica, target: replica, to: in }
+  - { source: api, from: to-client, target: client, to: result }

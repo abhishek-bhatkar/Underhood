@@ -1,0 +1,57 @@
+concepts:
+  client:
+    name: Client
+    summary: "Users' browsers — the traffic source."
+    fields:
+      - { key: url, label: request }
+    details:
+      - "All clients see one hostname; the architecture behind it is invisible."
+      - "Traffic is skewed: a few hot keys dominate request volume."
+
+  lb:
+    name: Load Balancer
+    summary: "Spreads traffic across interchangeable API instances."
+    details:
+      - "Strategies: round-robin, least connections, least requests."
+      - "Health checks pull sick instances out of rotation."
+      - "Makes horizontal scaling invisible to clients."
+
+  api:
+    name: "API instances (stateless)"
+    summary: "Resolve short codes; own the business logic and the failure policy."
+    fields:
+      - { key: instances, label: instances, list: true }
+    details:
+      - "Stateless: any instance serves any request — that's why LB works."
+      - "Cache-aside pattern: cache first, DB on miss, fill cache after."
+      - "Circuit breakers turn a dead dependency into fast failures."
+
+  cache:
+    name: "Cache (Redis)"
+    summary: "Hot mappings in memory — the latency killer."
+    fields:
+      - { key: entries, label: entries, list: true }
+    details:
+      - "TTLs bound staleness; expired keys fall through to the DB."
+      - "Hit rate is the design metric: every hit is a DB query avoided."
+      - "Keeps serving during DB failover — hot traffic survives outages."
+
+  db:
+    name: "Primary database"
+    summary: "Source of truth for code → URL mappings."
+    fields:
+      - { key: rows, label: rows, list: true }
+    details:
+      - "Indexed lookup on the short code (primary key)."
+      - "Single writer: the replica follows its log."
+      - "A dead primary is a system-wide event until failover completes."
+
+  replica:
+    name: "Replica database"
+    summary: "Streaming copy of the primary — reads today, survival tomorrow."
+    fields:
+      - { key: role, label: role }
+    details:
+      - "Replicates writes asynchronously — small lag is normal."
+      - "Promoted to primary when the primary dies."
+      - "After failover the old primary rejoins as a replica."

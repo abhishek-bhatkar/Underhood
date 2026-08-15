@@ -1,0 +1,12 @@
+title: What happens when a scalable system receives traffic and components fail?
+summary: >-
+  A short-URL resolve request arrives at the load balancer, lands on one
+  API instance, misses the cache, and reads the mapping from the database
+  before filling the cache — the second request takes the fast path. Then
+  the database dies: watch errors climb, the circuit breaker open, and a
+  replica get promoted before the system recovers.
+abstraction: >-
+  Scenario-driven model of the spec's interactive controls (traffic
+  level, server count, cache on/off): each scenario fixes those knobs at
+  a chosen setting. Sliders that re-run the simulation mid-flight are the
+  next engine capability (spec §19).

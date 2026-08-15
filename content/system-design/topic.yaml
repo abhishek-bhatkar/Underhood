@@ -1,0 +1,4 @@
+name: System Design
+description: >-
+  Request flow, caching, and failure behavior of a scalable service —
+  starting with a URL shortener under traffic.
