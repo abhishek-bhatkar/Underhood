@@ -1,0 +1,129 @@
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: out, type: source, pos: right }
+
+  - id: producer
+    kind: panel
+    label: Producer
+    position: { x: 300, y: 10 }
+    size: { w: 250, h: 150 }
+    lines:
+      - "partition · batch · retry"
+      - "key=user-42 · acks=all"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: topic
+    kind: panel
+    label: "Topic: orders"
+    position: { x: 620, y: 10 }
+    size: { w: 250, h: 150 }
+    lines:
+      - "P0 · P1 · P2"
+      - "replication factor 3"
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-b1, type: source, pos: bottom, offset: "25%" }
+      - { id: to-b2, type: source, pos: bottom, offset: "75%" }
+
+  - id: cluster
+    kind: group
+    label: Broker Cluster
+    position: { x: 0, y: 230 }
+    size: { w: 560, h: 440 }
+
+  - id: broker-1
+    kind: list
+    label: Broker 1
+    parent: cluster
+    position: { x: 30, y: 70 }
+    size: { w: 170, h: 320 }
+    key: log
+    emptyLabel: "log empty"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: ack, type: source, pos: top, offset: "80%" }
+      - { id: to-b2, type: source, pos: right, offset: "25%" }
+      - { id: to-b3, type: source, pos: right, offset: "75%" }
+      - { id: deliver-out, type: source, pos: right, offset: "50%" }
+      - { id: from-consumer, type: target, pos: right, offset: "90%" }
+
+  - id: broker-2
+    kind: list
+    label: Broker 2
+    parent: cluster
+    position: { x: 280, y: 60 }
+    size: { w: 250, h: 160 }
+    key: log
+    emptyLabel: "log empty"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: from-b1, type: target, pos: left }
+      - { id: to-consumer, type: source, pos: right }
+
+  - id: broker-3
+    kind: list
+    label: Broker 3
+    parent: cluster
+    position: { x: 280, y: 250 }
+    size: { w: 250, h: 140 }
+    key: log
+    emptyLabel: "log empty"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: from-b1, type: target, pos: left }
+      - { id: elect, type: source, pos: top }
+
+  - id: group
+    kind: group
+    label: Consumer Group
+    position: { x: 620, y: 230 }
+    size: { w: 540, h: 440 }
+
+  - id: consumer-group
+    kind: panel
+    label: "billing group"
+    parent: group
+    position: { x: 30, y: 60 }
+    size: { w: 480, h: 110 }
+    lines:
+      - "c1: P0+P1 · c2: P2"
+      - "poll · handle · commit"
+    chips:
+      - { key: position, text: "position $value", variant: net }
+    handles:
+      - { id: fetch, type: source, pos: left }
+      - { id: deliver, type: target, pos: top }
+      - { id: commit, type: source, pos: bottom }
+
+  - id: offsets
+    kind: list
+    label: Committed offsets
+    parent: group
+    position: { x: 30, y: 210 }
+    size: { w: 480, h: 190 }
+    key: committed
+    emptyLabel: "no commits yet"
+    itemTemplate: "$value.label"
+    absentLabel: "created on first commit"
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: terminal, from: out, target: producer, to: in }
+  - { source: producer, from: out, target: topic, to: in }
+  - { source: topic, from: to-b1, target: broker-1, to: in }
+  - { source: topic, from: to-b2, target: broker-2, to: in }
+  - { source: broker-1, from: to-b2, target: broker-2, to: from-b1 }
+  - { source: broker-1, from: to-b3, target: broker-3, to: from-b1 }
+  - { source: broker-1, from: ack, target: producer, to: in }
+  - { source: consumer-group, from: fetch, target: broker-1, to: from-consumer }
+  - { source: broker-1, from: deliver-out, target: consumer-group, to: deliver }
+  - { source: consumer-group, from: commit, target: offsets, to: in }

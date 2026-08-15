@@ -1,0 +1,11 @@
+title: What happens after a producer sends a message to Kafka?
+summary: >-
+  The producer hashes the record's key to pick a partition, appends it to
+  that partition's leader, followers in the ISR replicate it, and only then
+  is the produce acknowledged. A consumer group reads at its own pace and
+  commits offsets — and when the leader's broker dies, a follower is
+  elected in seconds.
+abstraction: >-
+  Simplified teaching model: one topic, three partitions, three brokers,
+  replication factor 3, acks=all; controller and zookeeper/KRaft internals
+  are compressed to single steps.

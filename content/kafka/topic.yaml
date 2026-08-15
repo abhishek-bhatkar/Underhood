@@ -1,0 +1,4 @@
+name: Kafka
+description: >-
+  Topics, partitions, replication, and consumer offsets — starting with
+  what happens after a producer sends a message.

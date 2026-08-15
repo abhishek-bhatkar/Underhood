@@ -1,0 +1,604 @@
+scenarios:
+  - id: produce-consume
+    name: Produce + consume
+    components:
+      - id: terminal
+      - id: producer
+      - id: topic
+      - id: broker-1
+      - id: broker-2
+      - id: broker-3
+      - id: consumer-group
+      - id: offsets
+        initial: absent
+    events:
+      - type: SEND
+        source: terminal
+        target: producer
+        duration: 900
+        payload:
+          command: "kcat -P -t orders"
+          key: user-42
+          value: '{"sku": "A-1", "qty": 3}'
+        explanation:
+          title: "A producer sends: key user-42"
+          body: >-
+            Your application (here via kcat) hands the producer a record:
+            key user-42, an order payload. The producer is a library inside
+            your process — it owns serializing, partitioning, batching, and
+            retries, not the brokers.
+          concept: "The producer is client-side library code — the broker never sees your app, only records."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: producer
+            status: active
+          - op: set
+            component: producer
+            data: { key: "user-42", acks: all }
+          - op: label
+            component: producer
+            text: "serializing record"
+          - op: log
+            text: "produce: key=$payload.key"
+
+      - type: PARTITIONED
+        source: producer
+        target: topic
+        duration: 900
+        explanation:
+          title: "Key hashed → partition P1"
+          body: >-
+            With a key present, the producer hashes it (murmur2) modulo the
+            partition count: user-42 lands in P1 of orders. Same key, same
+            partition — that is how Kafka guarantees per-key ordering.
+          concept: "Partitioning is deterministic: a key always routes to the same partition, so its records stay ordered."
+        effects:
+          - op: status
+            component: topic
+            status: active
+          - op: label
+            component: topic
+            text: "orders: 3 partitions"
+          - op: label
+            component: producer
+            text: "hash(user-42) -> P1"
+          - op: log
+            text: "partitioner: P1 selected"
+
+      - type: APPENDED
+        source: topic
+        target: broker-1
+        duration: 900
+        payload:
+          offset: 42
+        explanation:
+          title: "Appended to the leader's log @ offset 42"
+          body: >-
+            Every partition has one leader broker — P1's is broker-1. The
+            producer appends the record to the end of its on-disk log and
+            receives the offset. The log is append-only; offsets are just
+            positions, never reused.
+          concept: "A partition is an append-only log with an offset per record — position IS the identity."
+        effects:
+          - op: status
+            component: broker-1
+            status: active
+          - op: set
+            component: broker-1
+            data: { role: "leader P1" }
+          - op: push
+            component: broker-1
+            key: log
+            value: { label: "msg-001 @ offset $payload.offset" }
+          - op: label
+            component: broker-1
+            text: "leader P1"
+          - op: log
+            text: "appended msg-001 @ offset $payload.offset (P1)"
+
+      - type: REPLICATED_A
+        source: broker-1
+        target: broker-2
+        duration: 800
+        explanation:
+          title: "Follower broker-2 catches up"
+          body: >-
+            Broker-2 hosts a replica of P1 and fetches new records from the
+            leader, appending them to its own log. Replication is pull-based
+            — followers fetch, leaders don't push.
+          concept: "Followers fetch from the leader: replication is the same log, copied."
+        effects:
+          - op: status
+            component: broker-2
+            status: active
+          - op: set
+            component: broker-2
+            data: { role: "follower P1" }
+          - op: push
+            component: broker-2
+            key: log
+            value: { label: "msg-001 @ offset 42 (replica)" }
+          - op: label
+            component: broker-2
+            text: "ISR: caught up @42"
+          - op: log
+            text: "broker-2 replicated P1 @42"
+
+      - type: REPLICATED_B
+        source: broker-1
+        target: broker-3
+        duration: 800
+        explanation:
+          title: "Follower broker-3 catches up"
+          body: >-
+            Broker-3, the last in-sync replica, does the same. Once all
+            replicas in the ISR (in-sync replica set) have the record, the
+            leader can mark it committed.
+          concept: "The ISR is the set of replicas considered up to date — it defines what 'committed' means."
+        effects:
+          - op: status
+            component: broker-3
+            status: active
+          - op: set
+            component: broker-3
+            data: { role: "follower P1" }
+          - op: push
+            component: broker-3
+            key: log
+            value: { label: "msg-001 @ offset 42 (replica)" }
+          - op: label
+            component: broker-3
+            text: "ISR: caught up @42"
+          - op: log
+            text: "broker-3 replicated P1 @42"
+
+      - type: COMMITTED
+        source: broker-1
+        target: broker-1
+        duration: 800
+        explanation:
+          title: "High watermark advances: committed"
+          body: >-
+            The leader advances the high watermark — the highest offset
+            visible to consumers — past the record, because the full ISR
+            has it. With acks=all the produce is only now acknowledged.
+          concept: "acks=all waits for the ISR, not just the leader — that's the durability knob."
+        effects:
+          - op: set
+            component: broker-1
+            data: { hw: 43 }
+          - op: label
+            component: broker-1
+            text: "HW advanced to 43"
+          - op: log
+            text: "committed: high watermark 43"
+
+      - type: PRODUCER_ACKED
+        source: broker-1
+        target: producer
+        duration: 800
+        explanation:
+          title: "Producer receives the ack"
+          body: >-
+            The broker acknowledges with the offset. From the producer's
+            perspective the send is done; batching will flush more records
+            over this same connection later.
+          concept: "An ack carries the offset — your record's address in the log."
+        effects:
+          - op: status
+            component: producer
+            status: done
+          - op: label
+            component: producer
+            text: "acked @42"
+          - op: log
+            text: "producer: acked (offset 42)"
+
+      - type: GROUP_ASSIGNED
+        source: consumer-group
+        target: broker-1
+        duration: 900
+        explanation:
+          title: "Consumer group: partitions assigned"
+          body: >-
+            Our group "billing" has two consumers. The group coordinator
+            assigns partitions — c1 gets P0 and P1, c2 gets P2 — so each
+            partition is read by exactly one consumer in the group. Another
+            group would get all partitions independently.
+          concept: "A partition is assigned to exactly one consumer within a group — parallelism is partition-shaped."
+        effects:
+          - op: status
+            component: consumer-group
+            status: active
+          - op: set
+            component: consumer-group
+            data: { consumers: 2 }
+          - op: label
+            component: consumer-group
+            text: "c1: P0+P1 · c2: P2"
+          - op: log
+            text: "billing: assignment c1={P0,P1} c2={P2}"
+
+      - type: FETCHING
+        source: consumer-group
+        target: broker-1
+        duration: 800
+        explanation:
+          title: "c1 fetches P1 from offset 41"
+          body: >-
+            Consumers poll: fetch batches of records starting at their
+            committed position. c1 is at offset 41 on P1, so the broker
+            sends everything after it, up to the high watermark.
+          concept: "Consumers pull at their own pace — the log doesn't push, and slow consumers never slow brokers."
+        effects:
+          - op: label
+            component: consumer-group
+            text: "fetch P1 @41"
+          - op: log
+            text: "c1: fetch P1 position=41"
+
+      - type: DELIVERED
+        source: broker-1
+        target: consumer-group
+        duration: 800
+        explanation:
+          title: "msg-001 delivered to c1"
+          body: >-
+            The fetch returns msg-001 at offset 42 and your handler
+            processes the order. The record stays in the log regardless —
+            consumption doesn't delete anything, it just moves a position.
+          concept: "Reading is non-destructive: data is retained by time/size policy, not by consumption."
+        effects:
+          - op: set
+            component: consumer-group
+            data: { position: 43 }
+          - op: label
+            component: consumer-group
+            text: "handled msg-001"
+          - op: log
+            text: "c1: processed msg-001 @42"
+
+      - type: OFFSET_COMMITTED
+        source: consumer-group
+        target: offsets
+        duration: 800
+        payload:
+          offset: 43
+        explanation:
+          title: "Offset committed: P1 → 43"
+          body: >-
+            The group commits its new position to an internal offsets
+            topic. If c1 crashes, its replacement resumes exactly at 43 —
+            not where the log ends, not where it started.
+          concept: "An offset commit is a checkpoint: crash recovery replays from the last commit, no more."
+        effects:
+          - op: status
+            component: offsets
+            status: active
+          - op: push
+            component: offsets
+            key: committed
+            value: { label: "P1: committed $payload.offset" }
+          - op: label
+            component: offsets
+            text: "P1 -> 43"
+          - op: log
+            text: "committed offset 43 for P1"
+
+      - type: CAUGHT_UP
+        source: consumer-group
+        target: consumer-group
+        duration: 800
+        explanation:
+          title: "Lag: 0 — consumer is caught up"
+          body: >-
+            Committed position equals log end, so lag is zero. Everything
+            settles: the record is durable on three brokers, delivered
+            once to the billing group, and the checkpoint is safe.
+          concept: "Lag = log-end-offset − committed-offset: THE health metric of a consumer group."
+        effects:
+          - op: status
+            component: consumer-group
+            status: done
+          - op: status
+            component: offsets
+            status: done
+          - op: status
+            component: topic
+            status: done
+          - op: status
+            component: broker-1
+            status: done
+          - op: label
+            component: broker-1
+            text: "leader P1 · HW 43"
+          - op: status
+            component: broker-2
+            status: done
+          - op: status
+            component: broker-3
+            status: done
+          - op: log
+            text: "billing: lag 0 — end to end complete"
+
+  - id: broker-failure
+    name: Broker failure
+    components:
+      - id: terminal
+      - id: producer
+      - id: topic
+      - id: broker-1
+      - id: broker-2
+      - id: broker-3
+      - id: consumer-group
+      - id: offsets
+        initial: absent
+    events:
+      - type: PRODUCING
+        source: terminal
+        target: producer
+        duration: 900
+        payload:
+          command: "kcat -P -t orders"
+        explanation:
+          title: "Fast-forward: producing to orders"
+          body: >-
+            Compressed setup: one record already appended and replicated —
+            broker-1 leads P1 with followers 2 and 3 in sync.
+          concept: "Failure scenarios start from a healthy, fully replicated cluster."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: producer
+            status: active
+          - op: set
+            component: producer
+            data: { key: "user-42", acks: all }
+          - op: label
+            component: producer
+            text: "sending…"
+          - op: log
+            text: "produce: key=user-42"
+
+      - type: STEADY_STATE
+        source: topic
+        target: broker-1
+        duration: 900
+        explanation:
+          title: "Steady state: msg-001 on all replicas"
+          body: >-
+            Offset 42 lives on all three brokers; the high watermark is 43.
+            This redundancy is about to pay for itself.
+          concept: "Replication factor 3 tolerates 2 failures per partition."
+        effects:
+          - op: status
+            component: topic
+            status: done
+          - op: label
+            component: topic
+            text: "orders: 3 partitions"
+          - op: status
+            component: broker-1
+            status: done
+          - op: set
+            component: broker-1
+            data: { role: "leader P1", hw: 43 }
+          - op: push
+            component: broker-1
+            key: log
+            value: { label: "msg-001 @ offset 42" }
+          - op: label
+            component: broker-1
+            text: "leader P1 · HW 43"
+          - op: status
+            component: broker-2
+            status: done
+          - op: set
+            component: broker-2
+            data: { role: "follower P1" }
+          - op: push
+            component: broker-2
+            key: log
+            value: { label: "msg-001 @ offset 42 (replica)" }
+          - op: label
+            component: broker-2
+            text: "ISR @42"
+          - op: status
+            component: broker-3
+            status: done
+          - op: set
+            component: broker-3
+            data: { role: "follower P1" }
+          - op: push
+            component: broker-3
+            key: log
+            value: { label: "msg-001 @ offset 42 (replica)" }
+          - op: label
+            component: broker-3
+            text: "ISR @42"
+          - op: status
+            component: consumer-group
+            status: done
+          - op: set
+            component: consumer-group
+            data: { consumers: 2, position: 43 }
+          - op: label
+            component: consumer-group
+            text: "c1: P0+P1 · c2: P2 · caught up"
+          - op: status
+            component: offsets
+            status: done
+          - op: push
+            component: offsets
+            key: committed
+            value: { label: "P1: committed 43" }
+          - op: log
+            text: "steady: 3 replicas, HW 43, lag 0"
+
+      - type: BROKER_DIES
+        source: broker-1
+        target: broker-1
+        duration: 900
+        explanation:
+          title: "broker-1 goes down"
+          body: >-
+            The machine hosting the P1 leader dies. Every in-flight request
+            to it fails; the producer and c1 start erroring. The data is
+            still safe — broker-2 and broker-3 each hold a complete copy of
+            P1.
+          concept: "A broker failure is a leadership problem, not a data problem — the replicas have the data."
+        effects:
+          - op: status
+            component: broker-1
+            status: error
+          - op: label
+            component: broker-1
+            text: "unreachable"
+          - op: status
+            component: producer
+            status: error
+          - op: label
+            component: producer
+            text: "send failed (timeout)"
+          - op: log
+            text: "broker-1: unreachable"
+
+      - type: LEADER_ELECTED
+        source: broker-3
+        target: broker-2
+        duration: 1000
+        explanation:
+          title: "Controller elects broker-2 as P1 leader"
+          body: >-
+            The cluster controller (here running on broker-3) notices the
+            dead leader and promotes an in-sync replica — broker-2 — by
+            writing new leadership metadata. Only ISR members are eligible,
+            which is what protects against data loss.
+          concept: "Leader election promotes only in-sync replicas — electing a stale copy would silently lose records."
+        effects:
+          - op: status
+            component: broker-2
+            status: active
+          - op: set
+            component: broker-2
+            data: { role: "leader P1" }
+          - op: label
+            component: broker-2
+            text: "leader P1 (elected)"
+          - op: label
+            component: broker-3
+            text: "controller: elected broker-2"
+          - op: log
+            text: "controller: broker-2 elected leader of P1"
+
+      - type: METADATA_REFRESH
+        source: producer
+        target: topic
+        duration: 900
+        explanation:
+          title: "Clients refresh metadata: P1 → broker-2"
+          body: >-
+            Producer and consumer poll metadata, learn the new leader, and
+            re-target their requests. Retries against the old leader were
+            already buffered — they now go to broker-2.
+          concept: "Clients follow the leader via metadata: no config change, no restart — just a refresh."
+        effects:
+          - op: status
+            component: producer
+            status: active
+          - op: label
+            component: producer
+            text: "leader P1 -> broker-2"
+          - op: status
+            component: topic
+            status: active
+          - op: log
+            text: "metadata: P1 leader is now broker-2"
+
+      - type: PRODUCING_AGAIN
+        source: topic
+        target: broker-2
+        duration: 900
+        payload:
+          offset: 43
+        explanation:
+          title: "msg-002 appended on the new leader"
+          body: >-
+            The retried record appends to broker-2's log at offset 43 —
+            the same offset it would have had, because broker-2's copy was
+            in sync. Broker-3 re-replicates from the new leader.
+          concept: "Failover is invisible to ordering: an in-sync follower continues the exact same log."
+        effects:
+          - op: push
+            component: broker-2
+            key: log
+            value: { label: "msg-002 @ offset $payload.offset" }
+          - op: set
+            component: broker-2
+            data: { hw: 44 }
+          - op: label
+            component: broker-2
+            text: "leader P1 · HW 44"
+          - op: push
+            component: broker-3
+            key: log
+            value: { label: "msg-002 @ offset 43 (replica)" }
+          - op: label
+            component: broker-3
+            text: "re-replicating from broker-2"
+          - op: log
+            text: "appended msg-002 @43 on new leader"
+
+      - type: RECOVERED
+        source: consumer-group
+        target: consumer-group
+        duration: 800
+        explanation:
+          title: "Failover complete — no data lost"
+          body: >-
+            c1 resumes fetching from broker-2 at its committed position.
+            Total outage: seconds. The dead broker will rejoin later and
+            re-sync as a follower — the system converges back to three
+            replicas on its own.
+          concept: "acks=all + ISR election = zero recorded data lost on broker failure."
+        effects:
+          - op: status
+            component: producer
+            status: done
+          - op: label
+            component: producer
+            text: "acked @43"
+          - op: status
+            component: broker-2
+            status: done
+          - op: status
+            component: broker-3
+            status: done
+          - op: status
+            component: broker-1
+            status: done
+          - op: label
+            component: broker-1
+            text: offline
+          - op: status
+            component: topic
+            status: done
+          - op: status
+            component: consumer-group
+            status: done
+          - op: label
+            component: consumer-group
+            text: "fetching from broker-2"
+          - op: log
+            text: "failover complete — no data loss"
