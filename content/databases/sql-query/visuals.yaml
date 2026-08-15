@@ -1,0 +1,125 @@
+nodes:
+  - id: terminal
+    kind: terminal
+    position: { x: 0, y: 0 }
+    size: { w: 250, h: 175 }
+    handles:
+      - { id: out, type: source, pos: right }
+      - { id: result, type: target, pos: bottom, offset: "50%" }
+
+  - id: pg
+    kind: group
+    label: PostgreSQL
+    position: { x: 0, y: 230 }
+    size: { w: 1160, h: 440 }
+
+  - id: parser
+    kind: panel
+    label: Parser
+    parent: pg
+    position: { x: 30, y: 60 }
+    size: { w: 200, h: 150 }
+    lines:
+      - "text -> parse tree"
+      - syntax + catalogs
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: right }
+
+  - id: planner
+    kind: panel
+    label: Planner
+    parent: pg
+    position: { x: 290, y: 60 }
+    size: { w: 220, h: 150 }
+    lines:
+      - "costs candidate plans"
+      - "stats-driven"
+    chips:
+      - { key: plan, text: "$value", variant: net }
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: out, type: source, pos: right }
+
+  - id: executor
+    kind: panel
+    label: Executor
+    parent: pg
+    position: { x: 570, y: 60 }
+    size: { w: 220, h: 150 }
+    lines:
+      - "plan tree, node by node"
+      - visibility checks
+    handles:
+      - { id: in, type: target, pos: left }
+      - { id: to-index, type: source, pos: bottom, offset: "30%" }
+      - { id: to-pages, type: source, pos: bottom, offset: "70%" }
+      - { id: to-client, type: source, pos: top }
+
+  - id: index
+    kind: list
+    label: "Index (B-tree)"
+    parent: pg
+    position: { x: 850, y: 50 }
+    size: { w: 280, h: 170 }
+    key: descent
+    emptyLabel: "no descent yet"
+    itemTemplate: "$value.label"
+    absentLabel: "used on first lookup"
+    handles:
+      - { id: in, type: target, pos: top }
+      - { id: out, type: source, pos: bottom }
+
+  - id: pages
+    kind: list
+    label: Heap pages
+    parent: pg
+    position: { x: 850, y: 250 }
+    size: { w: 280, h: 160 }
+    key: heap
+    emptyLabel: "no tuples touched"
+    itemTemplate: "$value.label"
+    absentLabel: "touched on first access"
+    handles:
+      - { id: from-index, type: target, pos: top }
+      - { id: from-executor, type: target, pos: left }
+      - { id: out, type: source, pos: left, offset: "80%" }
+
+  - id: buffer-pool
+    kind: list
+    label: Buffer pool
+    parent: pg
+    position: { x: 30, y: 260 }
+    size: { w: 480, h: 150 }
+    key: cached
+    emptyLabel: "no pages cached yet"
+    itemTemplate: "$value.label"
+    handles:
+      - { id: in, type: target, pos: right }
+      - { id: out, type: source, pos: right, offset: "80%" }
+
+  - id: wal
+    kind: list
+    label: WAL
+    parent: pg
+    position: { x: 570, y: 260 }
+    size: { w: 220, h: 150 }
+    key: records
+    emptyLabel: "no records yet"
+    itemTemplate: "$value.label"
+    chips:
+      - { key: flushed, text: fsynced, variant: on }
+    handles:
+      - { id: in, type: target, pos: left }
+
+edges:
+  - { source: terminal, from: out, target: parser, to: in }
+  - { source: parser, from: out, target: planner, to: in }
+  - { source: planner, from: out, target: executor, to: in }
+  - { source: executor, from: to-index, target: index, to: in }
+  - { source: index, from: out, target: pages, to: from-index }
+  - { source: executor, from: to-pages, target: pages, to: from-executor }
+  - { source: pages, from: out, target: buffer-pool, to: in }
+  - { source: buffer-pool, from: out, target: executor, to: in }
+  - { source: executor, from: to-client, target: terminal, to: result }
+  - { source: pages, from: out, target: wal, to: in }

@@ -1,0 +1,10 @@
+title: What happens when you execute a SQL query or update?
+summary: >-
+  An indexed SELECT walks PostgreSQL's pipeline — parse, plan, execute —
+  descending a B-tree to a ctid and fetching the heap page through the
+  buffer pool. Then a transaction shows the write path: row lock, new
+  tuple version under MVCC, and the WAL record that makes COMMIT mean
+  "survives a crash".
+abstraction: >-
+  PostgreSQL is the reference implementation. Simplified: one B-tree
+  descent, heap-all-visible assumed, no TOAST/parallelism detail.

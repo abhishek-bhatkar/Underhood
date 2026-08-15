@@ -1,0 +1,445 @@
+scenarios:
+  - id: select
+    name: Indexed SELECT
+    components:
+      - id: terminal
+      - id: parser
+      - id: planner
+      - id: executor
+      - id: index
+        initial: absent
+      - id: pages
+        initial: absent
+      - id: buffer-pool
+      - id: wal
+    events:
+      - type: QUERY_SENT
+        source: terminal
+        target: parser
+        duration: 900
+        payload:
+          command: "SELECT name FROM users WHERE email = 'dev@x.io';"
+        explanation:
+          title: "psql sends the query"
+          body: >-
+            You type the query in psql, which ships the SQL text to the
+            server over its connection. The server now has a string — it
+            doesn't know what it means yet.
+          concept: "SQL is sent as text: parsing, planning, and execution are server-side stages of one string."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: parser
+            status: active
+          - op: log
+            text: "psql: query sent"
+
+      - type: PARSED
+        source: parser
+        target: planner
+        duration: 800
+        explanation:
+          title: "Parser: text → parse tree"
+          body: >-
+            The parser tokenizes and builds a parse tree, checking syntax
+            and that `users` and `email` exist in the catalog. Semantics
+            like "which plan is fast" belong to the next stage.
+          concept: "Parsing checks WHAT you said — planning decides HOW to do it."
+        effects:
+          - op: status
+            component: planner
+            status: active
+          - op: label
+            component: parser
+            text: "parse tree: Select -> Where -> Eq"
+          - op: label
+            component: planner
+            text: "planning…"
+          - op: log
+            text: "parser: SelectStmt (users.email = 'dev@x.io')"
+
+      - type: PLANNED
+        source: planner
+        target: executor
+        duration: 900
+        explanation:
+          title: "Planner: Index Scan beats Seq Scan"
+          body: >-
+            The planner costs two candidate plans using table statistics:
+            a sequential scan of all 100k rows (~412 cost units) versus an
+            index scan on users_email_key (~8.3). It picks the index scan
+            and hands a plan tree to the executor.
+          concept: "The planner is a cost-based chooser: statistics decide, not rules."
+        effects:
+          - op: status
+            component: executor
+            status: active
+          - op: set
+            component: planner
+            data: { plan: "Index Scan" }
+          - op: label
+            component: planner
+            text: "Index Scan (cost 8.3 vs 412)"
+          - op: log
+            text: "plan: Index Scan using users_email_key"
+
+      - type: INDEX_DESCENT
+        source: executor
+        target: index
+        duration: 900
+        payload:
+          ctid: "(42, 7)"
+        explanation:
+          title: "B-tree descent: root → leaf"
+          body: >-
+            The executor descends the B-tree on email: root, one internal
+            page, leaf — three page visits. The leaf entry holds the key
+            and the ctid (42, 7): the physical address of the heap tuple.
+          concept: "An index maps keys to row locations: the descent is O(log n) page reads, not a scan."
+        effects:
+          - op: status
+            component: index
+            status: active
+          - op: push
+            component: index
+            key: descent
+            value: { label: "root: 'dev@…' goes right" }
+          - op: push
+            component: index
+            key: descent
+            value: { label: "internal: down to leaf L4" }
+          - op: push
+            component: index
+            key: descent
+            value: { label: "leaf: 'dev@x.io' -> ctid $payload.ctid" }
+          - op: label
+            component: index
+            text: "3 page reads"
+          - op: log
+            text: "index: 'dev@x.io' -> ctid $payload.ctid"
+
+      - type: HEAP_FETCH
+        source: index
+        target: pages
+        duration: 900
+        payload:
+          page: 42
+        explanation:
+          title: "Heap fetch: page 42, slot 7"
+          body: >-
+            The ctid points into the heap — the table's actual storage.
+            The executor asks for page 42 and reads tuple slot 7. The
+            index is a shortcut to it, never a copy of it.
+          concept: "Indexes point; the heap stores: secondary indexes and live data are separate structures."
+        effects:
+          - op: status
+            component: pages
+            status: active
+          - op: push
+            component: pages
+            key: heap
+            value: { label: "page $payload.page slot 7: ('dev@x.io', 'Dev')" }
+          - op: label
+            component: pages
+            text: "page $payload.page pinned"
+          - op: log
+            text: "heap: fetched page $payload.page, slot 7"
+
+      - type: BUFFER_MISS
+        source: pages
+        target: buffer-pool
+        duration: 900
+        explanation:
+          title: "Buffer pool miss → read from disk"
+          body: >-
+            Page 42 isn't in shared buffers, so PostgreSQL reads it from
+            the tablespace file into the buffer pool — then pins it while
+            the executor holds it. A second query for this page would hit
+            the cache.
+          concept: "All heap/index access flows through the buffer pool: cache hits are the biggest silent performance win."
+        effects:
+          - op: status
+            component: buffer-pool
+            status: active
+          - op: push
+            component: buffer-pool
+            key: cached
+            value: { label: "page 42 (pinned) — disk read" }
+          - op: label
+            component: buffer-pool
+            text: "miss -> read(42)"
+          - op: log
+            text: "buffers: page 42 read from disk"
+
+      - type: VISIBILITY
+        source: buffer-pool
+        target: executor
+        duration: 800
+        explanation:
+          title: "Visibility check: is this row visible to us?"
+          body: >-
+            PostgreSQL reads the tuple's xmin/xmax headers to decide
+            whether this version is visible to your transaction's
+            snapshot — MVCC at work. It is, so the row qualifies.
+          concept: "MVCC: every tuple carries transaction metadata; readers never block writers."
+        effects:
+          - op: label
+            component: executor
+            text: "row visible (xmin committed)"
+          - op: log
+            text: "executor: visibility check passed"
+
+      - type: ROW_RETURNED
+        source: executor
+        target: terminal
+        duration: 800
+        explanation:
+          title: "1 row returned"
+          body: >-
+            The executor yields the row, psql formats it, and you see
+            Dev. Total: a few page reads instead of 100k scanned rows —
+            that's the whole story of why indexes matter.
+          concept: "Same query, one indexed page vs 100k rows scanned: the plan IS the performance."
+        effects:
+          - op: status
+            component: executor
+            status: done
+          - op: status
+            component: parser
+            status: done
+          - op: status
+            component: planner
+            status: done
+          - op: status
+            component: index
+            status: done
+          - op: label
+            component: index
+            text: "descent complete"
+          - op: status
+            component: pages
+            status: done
+          - op: status
+            component: buffer-pool
+            status: done
+          - op: label
+            component: terminal
+            text: "1 row: Dev"
+          - op: log
+            text: "psql: (1 row)"
+
+  - id: transaction
+    name: UPDATE transaction
+    components:
+      - id: terminal
+      - id: parser
+      - id: planner
+      - id: executor
+      - id: index
+        initial: absent
+      - id: pages
+        initial: absent
+      - id: buffer-pool
+      - id: wal
+    events:
+      - type: TX_BEGIN
+        source: terminal
+        target: parser
+        duration: 800
+        payload:
+          command: "BEGIN; UPDATE users SET name = 'Dev Sr' WHERE id = 7;"
+        explanation:
+          title: "BEGIN: a transaction starts"
+          body: >-
+            Your transaction gets an ID (5556) and a snapshot — a view of
+            which other transactions' changes it may see. From here,
+            isolation rules apply.
+          concept: "A transaction is a unit with an identity and a snapshot: isolation is about snapshots, not locks alone."
+        effects:
+          - op: set
+            component: terminal
+            data: { command: "$payload.command" }
+          - op: status
+            component: terminal
+            status: done
+          - op: status
+            component: parser
+            status: active
+          - op: status
+            component: buffer-pool
+            status: active
+          - op: label
+            component: buffer-pool
+            text: "snapshot acquired (txid 5556)"
+          - op: log
+            text: "BEGIN (txid 5556)"
+
+      - type: ROW_LOCATED
+        source: parser
+        target: executor
+        duration: 800
+        explanation:
+          title: "Parse, plan: locate row id = 7"
+          body: >-
+            The primary key index descends to id 7, finding ctid (12, 3).
+            Parsed and planned as before — compressed here — the executor
+            now has the target.
+          concept: "Updates are locate-then-modify: the index finds, the heap changes."
+        effects:
+          - op: status
+            component: parser
+            status: done
+          - op: status
+            component: executor
+            status: active
+          - op: status
+            component: index
+            status: active
+          - op: push
+            component: index
+            key: descent
+            value: { label: "pkey: id=7 -> ctid (12, 3)" }
+          - op: label
+            component: index
+            text: "1 page read"
+          - op: log
+            text: "index: id=7 -> ctid (12,3)"
+
+      - type: ROW_LOCKED
+        source: executor
+        target: pages
+        duration: 800
+        explanation:
+          title: "Row locked"
+          body: >-
+            Before modifying, the transaction takes a row-level lock and
+            sets the old tuple's xmax to 5556. A concurrent UPDATE of the
+            same row would wait here — this is where write contention
+            lives.
+          concept: "Locks serialize writers to the same row only — different rows proceed in parallel."
+        effects:
+          - op: status
+            component: pages
+            status: active
+          - op: push
+            component: pages
+            key: heap
+            value: { label: "page 12 slot 3: xmax = 5556 (locked)" }
+          - op: label
+            component: pages
+            text: "page 12 slot 3 locked"
+          - op: log
+            text: "heap: row locked (xmax=5556)"
+
+      - type: NEW_VERSION
+        source: executor
+        target: pages
+        duration: 800
+        explanation:
+          title: "MVCC: new version written alongside"
+          body: >-
+            PostgreSQL doesn't overwrite in place — it writes a new tuple
+            version with xmin 5556 into the same page and marks the index
+            to find both. Readers with older snapshots keep seeing the old
+            row; new ones see this one after commit.
+          concept: "MVCC: an UPDATE is insert-new + mark-old — readers never wait for writers."
+        effects:
+          - op: push
+            component: pages
+            key: heap
+            value: { label: "page 12 slot 109: v2 'Dev Sr' (xmin 5556)" }
+          - op: label
+            component: executor
+            text: "v2 written, index updated"
+          - op: log
+            text: "heap: new version at (12,109)"
+
+      - type: WAL_APPEND
+        source: pages
+        target: wal
+        duration: 900
+        explanation:
+          title: "WAL: the change is logged first"
+          body: >-
+            Before dirtying data pages, the change is appended to the
+            write-ahead log as bytes describing the physical change. WAL
+            is sequential and cheap; data pages are scattered and
+            deferred.
+          concept: "Write-ahead logging: log the change before applying it — crash recovery replays the log."
+        effects:
+          - op: status
+            component: wal
+            status: active
+          - op: push
+            component: wal
+            key: records
+            value: { label: "WAL: UPDATE users id=7 -> (12,109)" }
+          - op: label
+            component: wal
+            text: "record appended"
+          - op: log
+            text: "wal: update record appended"
+
+      - type: COMMIT
+        source: wal
+        target: wal
+        duration: 900
+        explanation:
+          title: "COMMIT: WAL flushed (fsync)"
+          body: >-
+            The commit record is written and fsynced to disk. Only after
+            that durable ack does PostgreSQL report success. The data
+            pages themselves may still be dirty in memory — the log is
+            the truth.
+          concept: "COMMIT means the log is durable — data pages catch up later. That's the whole durability trick."
+        effects:
+          - op: set
+            component: wal
+            data: { flushed: true }
+          - op: label
+            component: wal
+            text: "commit record fsynced"
+          - op: log
+            text: "wal: commit record flushed (fsync)"
+
+      - type: VISIBLE
+        source: executor
+        target: terminal
+        duration: 800
+        explanation:
+          title: "Committed — v2 becomes visible"
+          body: >-
+            The transaction's snapshot ends; txid 5556 is marked
+            committed and new readers of id 7 resolve to 'Dev Sr'. If the
+            server had crashed one second later, recovery would have
+            replayed WAL and reached exactly this state.
+          concept: "Durability = replayable log: a crash between 'flushed' and 'acknowledged' is impossible to observe."
+        effects:
+          - op: status
+            component: executor
+            status: done
+          - op: status
+            component: index
+            status: done
+          - op: status
+            component: pages
+            status: done
+          - op: label
+            component: pages
+            text: "v2 live at (12,109)"
+          - op: status
+            component: buffer-pool
+            status: done
+          - op: status
+            component: wal
+            status: done
+          - op: label
+            component: terminal
+            text: "UPDATE 1 · COMMIT"
+          - op: log
+            text: "psql: UPDATE 1 — committed"
