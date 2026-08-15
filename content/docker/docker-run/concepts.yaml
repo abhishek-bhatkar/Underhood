@@ -1,0 +1,54 @@
+concepts:
+  terminal:
+    name: Terminal
+    summary: "Where you type docker commands; shows the command and the resulting log."
+    details:
+      - "Your shell is just the messenger — it runs the docker binary and shows its output."
+      - "The docker CLI exits after the API call; the container keeps running without it."
+      - "In this simulation the terminal doubles as the event log, like real docker output."
+
+  cli:
+    name: Docker CLI
+    summary: "A thin client that parses commands and forwards them to the daemon."
+    details:
+      - "docker, docker compose, and Docker Desktop UIs are all clients of the same API."
+      - "It speaks HTTP over the Unix socket /var/run/docker.sock (or TCP when configured)."
+      - "docker run expands to two API calls: POST /containers/create, then POST /containers/{id}/start."
+      - "The CLI never touches images, namespaces, or processes directly."
+
+  daemon:
+    name: Docker Daemon (dockerd)
+    summary: "The server that does everything: image storage, pulls, container lifecycle."
+    details:
+      - "Exposes the REST API that every Docker client talks to."
+      - "Owns /var/lib/docker: content store for layers, container metadata, volumes, networks."
+      - "Orchestrates the real Linux machinery: overlayfs, namespaces, cgroups, veth pairs, iptables."
+      - "Supervises containers after start — log capture, restart policies, events."
+
+  registry:
+    name: Registry (Docker Hub)
+    summary: "A server that stores and serves image manifests and layer blobs."
+    details:
+      - "Docker Hub (registry-1.docker.io) is the default registry; private registries work identically."
+      - "Tags like \"latest\" are mutable pointers; digests like sha256:ab12… are immutable."
+      - "Each layer is content-addressed by its own SHA-256, verified on download."
+      - "Auth happens per-registry (anonymous pulls for public images, tokens for private ones)."
+
+  image-store:
+    name: Local image store
+    summary: "The daemon's content store of read-only image layers on disk."
+    details:
+      - "Layers live in /var/lib/docker/overlay2, deduplicated by digest."
+      - "Two images sharing a base layer store that blob exactly once."
+      - "docker images lists what's cached; docker rmi removes layers no image references."
+      - "Pulling is incremental: existing layers are skipped, partial downloads resume."
+
+  container:
+    name: Container
+    summary: "An isolated set of processes running from an image, with a writable layer on top."
+    details:
+      - "Image layers stay read-only; every container adds its own thin writable layer (overlayfs)."
+      - "Isolation = namespaces (PID, mount, network, UTS, IPC) + cgroups for resource limits."
+      - "Not a VM: no guest kernel — container processes run directly on the host kernel."
+      - "The process you start becomes PID 1 inside the container's PID namespace."
+      - "Lifecycle: created -> running -> paused/stopped -> removed."

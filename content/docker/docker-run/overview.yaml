@@ -1,0 +1,7 @@
+title: What happens when you run `docker run nginx`?
+summary: >-
+  Follow one command through the whole system: the CLI talks to the Docker
+  daemon over its API, the daemon finds (or pulls) the image layer by layer,
+  then builds a container around it — a writable layer, a network, and one
+  isolated process. Play it, step through it, and click any component to
+  inspect it.
