@@ -3,11 +3,22 @@ import { materializeEvents } from '@underhood/simulation-engine';
 import { topics, firstExperience } from './registry';
 
 describe('content registry', () => {
-  it('discovers topics and their experiences', () => {
-    expect(Object.keys(topics).sort()).toContain('docker');
-    const docker = topics.docker;
-    expect(docker.name).toBe('Docker');
-    expect(Object.keys(docker.experiences)).toContain('docker-run');
+  it('discovers all spec topics and their experiences', () => {
+    expect(Object.keys(topics).sort()).toEqual([
+      'databases',
+      'docker',
+      'jvm',
+      'kafka',
+      'kubernetes',
+      'linux',
+      'networking',
+      'system-design',
+      'v8',
+    ]);
+    expect(topics.docker.name).toBe('Docker');
+    expect(topics.jvm.name).toBe('JVM');
+    expect(Object.keys(topics.docker.experiences)).toContain('docker-run');
+    expect(Object.keys(topics.jvm.experiences)).toContain('run-java');
   });
 
   it('docker-run has two scenarios and six concepts', () => {

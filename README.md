@@ -6,18 +6,23 @@ A visual learning engine for understanding how technical systems actually work.
 
 One engine, many systems. Each topic is **content** — components, event
 sequences, and explanations as validated YAML — rendered by the same
-simulation engine and UI.
+simulation engine and UI. Every experience has a happy-path scenario plus a
+failure scenario (each spec's acceptance principle requires at least one).
 
-Current experiences:
-
-- **Docker** — [what happens when you run `docker run nginx`?](https://abhishek-bhatkar.github.io/Underhood/#/docker/docker-run)
-  pull vs cached scenarios: CLI → daemon → registry → layers → container.
-- **JVM** — [what happens when you run a Java program?](https://abhishek-bhatkar.github.io/Underhood/#/jvm/run-java)
-  run + stack-overflow scenarios: javac → classloading → runtime areas →
-  execution, frames, heap, JIT.
+| Topic | Experience | Scenarios |
+| --- | --- | --- |
+| Docker | `docker run nginx` | Pull image · Image cached |
+| JVM | Run a Java program | Run program · Stack overflow |
+| Kubernetes | Create a Deployment (3 replicas) | Apply · Pod crash + self-healing |
+| Kafka | Produce a message | Produce + consume · Broker failure |
+| Networking | Request `https://example.com` | HTTPS request · DNS failure |
+| Linux | Make a system call | `write()` · Permission denied |
+| Databases | Run a SQL query (PostgreSQL) | Indexed SELECT · UPDATE transaction |
+| V8 | Run a JS function | Run + tiering · Deoptimization |
+| System Design | URL shortener under load | Resolve (miss → hit) · DB failure + failover |
 
 Full product vision: [`spec/visual-technical-systems-plan.md`](spec/visual-technical-systems-plan.md).
-Topic specs live next to it (`spec/05-jvm.md`, …).
+Topic specs live next to it (`spec/02-kubernetes.md` … `spec/09-system-design.md`).
 
 ## Run it
 
@@ -77,8 +82,10 @@ apps/web (React + Vite + React Flow)
 
 Engineering principles (from the spec): deterministic simulations, renderer
 separate from content, no premature backend/AI/3D, content as data. The
-Phase 9 test passed: JVM landed with **zero engine/UI code changes** — only
-new YAML plus the visuals schema the generalization introduced.
+Phase 9 test passed twice over: JVM and then seven more topics landed with
+**zero engine/UI code changes** — only YAML. The generic content validator
+(`packages/simulation-engine/src/__tests__/topics.test.ts`) checks every
+topic automatically: schema, event well-formedness, and settled end states.
 
 ## Adding a topic
 
