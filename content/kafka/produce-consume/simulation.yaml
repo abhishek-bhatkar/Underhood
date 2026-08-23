@@ -25,9 +25,9 @@ scenarios:
           body: >-
             Your application (here via kcat) hands the producer a record:
             key user-42, an order payload. The producer is a library inside
-            your process — it owns serializing, partitioning, batching, and
+            your process - it owns serializing, partitioning, batching, and
             retries, not the brokers.
-          concept: "The producer is client-side library code — the broker never sees your app, only records."
+          concept: "The producer is client-side library code - the broker never sees your app, only records."
         effects:
           - op: set
             component: terminal
@@ -56,7 +56,7 @@ scenarios:
           body: >-
             With a key present, the producer hashes it (murmur2) modulo the
             partition count: user-42 lands in P1 of orders. Same key, same
-            partition — that is how Kafka guarantees per-key ordering.
+            partition - that is how Kafka guarantees per-key ordering.
           concept: "Partitioning is deterministic: a key always routes to the same partition, so its records stay ordered."
         effects:
           - op: status
@@ -80,11 +80,11 @@ scenarios:
         explanation:
           title: "Appended to the leader's log @ offset 42"
           body: >-
-            Every partition has one leader broker — P1's is broker-1. The
+            Every partition has one leader broker - P1's is broker-1. The
             producer appends the record to the end of its on-disk log and
             receives the offset. The log is append-only; offsets are just
             positions, never reused.
-          concept: "A partition is an append-only log with an offset per record — position IS the identity."
+          concept: "A partition is an append-only log with an offset per record - position IS the identity."
         effects:
           - op: status
             component: broker-1
@@ -111,7 +111,7 @@ scenarios:
           body: >-
             Broker-2 hosts a replica of P1 and fetches new records from the
             leader, appending them to its own log. Replication is pull-based
-            — followers fetch, leaders don't push.
+            - followers fetch, leaders don't push.
           concept: "Followers fetch from the leader: replication is the same log, copied."
         effects:
           - op: status
@@ -140,7 +140,7 @@ scenarios:
             Broker-3, the last in-sync replica, does the same. Once all
             replicas in the ISR (in-sync replica set) have the record, the
             leader can mark it committed.
-          concept: "The ISR is the set of replicas considered up to date — it defines what 'committed' means."
+          concept: "The ISR is the set of replicas considered up to date - it defines what 'committed' means."
         effects:
           - op: status
             component: broker-3
@@ -165,10 +165,10 @@ scenarios:
         explanation:
           title: "High watermark advances: committed"
           body: >-
-            The leader advances the high watermark — the highest offset
-            visible to consumers — past the record, because the full ISR
+            The leader advances the high watermark - the highest offset
+            visible to consumers - past the record, because the full ISR
             has it. With acks=all the produce is only now acknowledged.
-          concept: "acks=all waits for the ISR, not just the leader — that's the durability knob."
+          concept: "acks=all waits for the ISR, not just the leader - that's the durability knob."
         effects:
           - op: set
             component: broker-1
@@ -189,7 +189,7 @@ scenarios:
             The broker acknowledges with the offset. From the producer's
             perspective the send is done; batching will flush more records
             over this same connection later.
-          concept: "An ack carries the offset — your record's address in the log."
+          concept: "An ack carries the offset - your record's address in the log."
         effects:
           - op: status
             component: producer
@@ -208,10 +208,10 @@ scenarios:
           title: "Consumer group: partitions assigned"
           body: >-
             Our group "billing" has two consumers. The group coordinator
-            assigns partitions — c1 gets P0 and P1, c2 gets P2 — so each
+            assigns partitions - c1 gets P0 and P1, c2 gets P2 - so each
             partition is read by exactly one consumer in the group. Another
             group would get all partitions independently.
-          concept: "A partition is assigned to exactly one consumer within a group — parallelism is partition-shaped."
+          concept: "A partition is assigned to exactly one consumer within a group - parallelism is partition-shaped."
         effects:
           - op: status
             component: consumer-group
@@ -235,7 +235,7 @@ scenarios:
             Consumers poll: fetch batches of records starting at their
             committed position. c1 is at offset 41 on P1, so the broker
             sends everything after it, up to the high watermark.
-          concept: "Consumers pull at their own pace — the log doesn't push, and slow consumers never slow brokers."
+          concept: "Consumers pull at their own pace - the log doesn't push, and slow consumers never slow brokers."
         effects:
           - op: label
             component: consumer-group
@@ -251,7 +251,7 @@ scenarios:
           title: "msg-001 delivered to c1"
           body: >-
             The fetch returns msg-001 at offset 42 and your handler
-            processes the order. The record stays in the log regardless —
+            processes the order. The record stays in the log regardless -
             consumption doesn't delete anything, it just moves a position.
           concept: "Reading is non-destructive: data is retained by time/size policy, not by consumption."
         effects:
@@ -274,7 +274,7 @@ scenarios:
           title: "Offset committed: P1 → 43"
           body: >-
             The group commits its new position to an internal offsets
-            topic. If c1 crashes, its replacement resumes exactly at 43 —
+            topic. If c1 crashes, its replacement resumes exactly at 43 -
             not where the log ends, not where it started.
           concept: "An offset commit is a checkpoint: crash recovery replays from the last commit, no more."
         effects:
@@ -296,7 +296,7 @@ scenarios:
         target: consumer-group
         duration: 800
         explanation:
-          title: "Lag: 0 — consumer is caught up"
+          title: "Lag: 0 - consumer is caught up"
           body: >-
             Committed position equals log end, so lag is zero. Everything
             settles: the record is durable on three brokers, delivered
@@ -325,7 +325,7 @@ scenarios:
             component: broker-3
             status: done
           - op: log
-            text: "billing: lag 0 — end to end complete"
+            text: "billing: lag 0 - end to end complete"
 
   - id: broker-failure
     name: Broker failure
@@ -349,7 +349,7 @@ scenarios:
         explanation:
           title: "Fast-forward: producing to orders"
           body: >-
-            Compressed setup: one record already appended and replicated —
+            Compressed setup: one record already appended and replicated -
             broker-1 leads P1 with followers 2 and 3 in sync.
           concept: "Failure scenarios start from a healthy, fully replicated cluster."
         effects:
@@ -455,9 +455,9 @@ scenarios:
           body: >-
             The machine hosting the P1 leader dies. Every in-flight request
             to it fails; the producer and c1 start erroring. The data is
-            still safe — broker-2 and broker-3 each hold a complete copy of
+            still safe - broker-2 and broker-3 each hold a complete copy of
             P1.
-          concept: "A broker failure is a leadership problem, not a data problem — the replicas have the data."
+          concept: "A broker failure is a leadership problem, not a data problem - the replicas have the data."
         effects:
           - op: status
             component: broker-1
@@ -482,10 +482,10 @@ scenarios:
           title: "Controller elects broker-2 as P1 leader"
           body: >-
             The cluster controller (here running on broker-3) notices the
-            dead leader and promotes an in-sync replica — broker-2 — by
+            dead leader and promotes an in-sync replica - broker-2 - by
             writing new leadership metadata. Only ISR members are eligible,
             which is what protects against data loss.
-          concept: "Leader election promotes only in-sync replicas — electing a stale copy would silently lose records."
+          concept: "Leader election promotes only in-sync replicas - electing a stale copy would silently lose records."
         effects:
           - op: status
             component: broker-2
@@ -511,8 +511,8 @@ scenarios:
           body: >-
             Producer and consumer poll metadata, learn the new leader, and
             re-target their requests. Retries against the old leader were
-            already buffered — they now go to broker-2.
-          concept: "Clients follow the leader via metadata: no config change, no restart — just a refresh."
+            already buffered - they now go to broker-2.
+          concept: "Clients follow the leader via metadata: no config change, no restart - just a refresh."
         effects:
           - op: status
             component: producer
@@ -535,7 +535,7 @@ scenarios:
         explanation:
           title: "msg-002 appended on the new leader"
           body: >-
-            The retried record appends to broker-2's log at offset 43 —
+            The retried record appends to broker-2's log at offset 43 -
             the same offset it would have had, because broker-2's copy was
             in sync. Broker-3 re-replicates from the new leader.
           concept: "Failover is invisible to ordering: an in-sync follower continues the exact same log."
@@ -565,11 +565,11 @@ scenarios:
         target: consumer-group
         duration: 800
         explanation:
-          title: "Failover complete — no data lost"
+          title: "Failover complete - no data lost"
           body: >-
             c1 resumes fetching from broker-2 at its committed position.
             Total outage: seconds. The dead broker will rejoin later and
-            re-sync as a follower — the system converges back to three
+            re-sync as a follower - the system converges back to three
             replicas on its own.
           concept: "acks=all + ISR election = zero recorded data lost on broker failure."
         effects:
@@ -601,4 +601,4 @@ scenarios:
             component: consumer-group
             text: "fetching from broker-2"
           - op: log
-            text: "failover complete — no data loss"
+            text: "failover complete - no data loss"

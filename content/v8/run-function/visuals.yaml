@@ -26,7 +26,7 @@ nodes:
     position: { x: 620, y: 0 }
     size: { w: 250, h: 175 }
     key: nodes
-    emptyLabel: "empty — nothing parsed"
+    emptyLabel: "empty - nothing parsed"
     itemTemplate: "$value.label"
     absentLabel: "built by the parser"
     handles:

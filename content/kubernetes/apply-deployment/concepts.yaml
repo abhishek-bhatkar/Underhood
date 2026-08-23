@@ -1,25 +1,25 @@
 concepts:
   terminal:
     name: Terminal (kubectl)
-    summary: "The CLI that talks to the API server — one client among many."
+    summary: "The CLI that talks to the API server - one client among many."
     fields:
       - { key: command, label: command }
     details:
       - "Reads manifests and issues REST calls against the API server over HTTPS."
       - "Applies are declarative: 'make this state true', not 'run this command'."
-      - "kubectl exiting changes nothing — the loop owns the outcome."
+      - "kubectl exiting changes nothing - the loop owns the outcome."
 
   apiserver:
     name: API Server
     summary: "The single entry point: authentication, validation, and storage of all cluster state."
     details:
-      - "Every actor — kubectl, controllers, kubelets — is an API client."
+      - "Every actor - kubectl, controllers, kubelets - is an API client."
       - "Validates objects against OpenAPI schemas and admission webhooks before persisting."
       - "Serves watches so clients learn about state changes by streaming, not polling."
 
   etcd:
     name: etcd
-    summary: "The cluster's source of truth — a distributed key-value store."
+    summary: "The cluster's source of truth - a distributed key-value store."
     fields:
       - { key: keys, label: objects, list: true }
     details:
@@ -35,7 +35,7 @@ concepts:
       - { key: actual, label: actual }
     details:
       - "Deployment controller owns ReplicaSets; ReplicaSet controller owns Pods."
-      - "Observe → diff → act, forever — self-healing is this loop, nothing more."
+      - "Observe → diff → act, forever - self-healing is this loop, nothing more."
       - "Controllers run in kube-controller-manager, watching via the API."
 
   scheduler:
@@ -43,7 +43,7 @@ concepts:
     summary: "Places Pending pods onto feasible nodes."
     details:
       - "Filtering eliminates nodes (resources, taints, affinity); scoring ranks the rest."
-      - "Binding is a write to the API — the scheduler starts nothing itself."
+      - "Binding is a write to the API - the scheduler starts nothing itself."
       - "One pod per decision; it never moves running pods (that's eviction's job)."
 
   kubelet:
@@ -56,11 +56,11 @@ concepts:
 
   pods:
     name: Pods
-    summary: "The smallest deployable unit — one or more containers sharing network and storage."
+    summary: "The smallest deployable unit - one or more containers sharing network and storage."
     fields:
       - { key: ready, label: ready }
       - { key: replicas, label: pods, list: true }
     details:
       - "Containers in a pod share an IP and can talk over localhost."
-      - "Pods are cattle: they get names, not funerals — replacement is the recovery model."
+      - "Pods are cattle: they get names, not funerals - replacement is the recovery model."
       - "Readiness gates whether a pod counts toward the Deployment's target."

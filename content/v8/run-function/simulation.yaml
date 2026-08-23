@@ -25,7 +25,7 @@ scenarios:
           title: "You run: node add.js"
           body: >-
             The file contains function add(a, b) { return a + b; } plus a
-            loop calling it. V8 — the engine inside Node and Chrome —
+            loop calling it. V8 - the engine inside Node and Chrome -
             starts with source text and no idea what it means.
           concept: "JavaScript arrives as text: every representation that follows is one the engine built."
         effects:
@@ -51,7 +51,7 @@ scenarios:
         explanation:
           title: "Parser: source → AST"
           body: >-
-            V8 tokenizes and parses into an abstract syntax tree — add is
+            V8 tokenizes and parses into an abstract syntax tree - add is
             a FunctionDecl with two parameters and a return of a
             BinaryExpr. Pre-parsing skips function bodies not needed yet;
             this one will be fully parsed.
@@ -88,7 +88,7 @@ scenarios:
         explanation:
           title: "Ignition: AST → bytecode"
           body: >-
-            The Ignition compiler lowers the AST to bytecode — a compact
+            The Ignition compiler lowers the AST to bytecode - a compact
             register-machine format. For add: load a, add b, return.
             Bytecode compiles fast and starts running fast; nobody waits
             for full optimization.
@@ -123,11 +123,11 @@ scenarios:
         target: ignition
         duration: 800
         explanation:
-          title: "add(2, 3) — interpreted"
+          title: "add(2, 3) - interpreted"
           body: >-
             The loop calls add. Ignition walks the bytecode
             instruction-by-instruction, dispatching through a handler
-            table. Correct immediately — and never the fastest way.
+            table. Correct immediately - and never the fastest way.
           concept: "The interpreter trades speed for flexibility: every operation can still be anything."
         effects:
           - op: set
@@ -147,7 +147,7 @@ scenarios:
           title: "Feedback slot: a is Smi, b is Smi"
           body: >-
             Every operation site (like the Add at slot 0) keeps a feedback
-            vector recording what it actually saw: both operands are Smis —
+            vector recording what it actually saw: both operands are Smis -
             small integers stored unboxed. This is the raw material of
             optimization.
           concept: "Runtime feedback turns dynamic JavaScript into observed, optimizable patterns."
@@ -207,7 +207,7 @@ scenarios:
             data: { calls: 10000 }
           - op: label
             component: ignition
-            text: "10k calls — budget spent"
+            text: "10k calls - budget spent"
           - op: log
             text: "add is hot after ~10k invocations"
 
@@ -220,7 +220,7 @@ scenarios:
           body: >-
             TurboFan takes the bytecode plus the feedback vector and
             speculates: "Add here is Smi + Smi." It emits machine code
-            with a guard that checks the assumption — fast path, cheap
+            with a guard that checks the assumption - fast path, cheap
             check.
           concept: "Optimization is speculation with guards: fast if assumptions hold, safe when they don't."
         effects:
@@ -267,11 +267,11 @@ scenarios:
         target: terminal
         duration: 800
         explanation:
-          title: "add(2, 3) — native speed"
+          title: "add(2, 3) - native speed"
           body: >-
             Subsequent calls run in a handful of nanoseconds. The tiering
             ladder did its job: fast start via bytecode, fast steady state
-            via speculation. Until, that is, the assumptions break — see
+            via speculation. Until, that is, the assumptions break - see
             the deopt scenario.
           concept: "Tiering = start fast, get fast: bytecode now, machine code when it pays."
         effects:
@@ -321,7 +321,7 @@ scenarios:
         explanation:
           title: "Fast-forward: add is optimized"
           body: >-
-            Same script — but the loop that heats add up is compressed:
+            Same script - but the loop that heats add up is compressed:
             by now, add has Smi feedback and TurboFan machine code
             installed.
           concept: "Deopt stories start at maximum speed."
@@ -366,7 +366,7 @@ scenarios:
           title: "10,000 calls: Smi feedback accumulates"
           body: >-
             The loop runs, Ignition interprets, and the feedback vector
-            records only Smis. add crosses the hot threshold — and with
+            records only Smis. add crosses the hot threshold - and with
             clean monomorphic feedback, TurboFan compiles it tight.
           concept: "Monomorphic feedback is the best case: one type seen, one fast path emitted."
         effects:
@@ -400,8 +400,8 @@ scenarios:
         explanation:
           title: "TurboFan installs Smi+Smi machine code"
           body: >-
-            Speculating on the feedback, TurboFan emits a tight fast path —
-            two loads, one add, a guard — and swaps it in for future calls.
+            Speculating on the feedback, TurboFan emits a tight fast path -
+            two loads, one add, a guard - and swaps it in for future calls.
             This is the peak the incoming string is about to spoil.
           concept: "Optimized code is guarded speculation: type changes are detected, not catastrophic."
         effects:
@@ -429,11 +429,11 @@ scenarios:
         target: feedback
         duration: 900
         explanation:
-          title: "add('2', 3) — a string appears"
+          title: "add('2', 3) - a string appears"
           body: >-
             Somewhere the script calls add with a string. Execution lands
             in the optimized code and immediately hits the guard: this
-            operand is not a Smi. The assumption is now false — and that
+            operand is not a Smi. The assumption is now false - and that
             is a normal, expected event.
           concept: "Optimized code is guarded speculation: type changes are detected, not catastrophic."
         effects:
@@ -448,7 +448,7 @@ scenarios:
             component: machine-code
             text: "guard failed: not Smi"
           - op: log
-            text: "add('2', 3) — map check failed"
+            text: "add('2', 3) - map check failed"
 
       - type: DEOPTIMIZED
         source: machine-code
@@ -458,7 +458,7 @@ scenarios:
           title: "Deoptimize: back to the interpreter"
           body: >-
             V8 throws away the optimized frame and rebuilds an interpreter
-            frame exactly where the failing operation was — the program
+            frame exactly where the failing operation was - the program
             never notices. The call completes via the bytecode's generic
             Add, which handles strings ('2' + 3 → '23').
           concept: "Deopt is correct-by-construction: guards make wrong speculation safe."
@@ -483,7 +483,7 @@ scenarios:
         target: turbofan
         duration: 900
         explanation:
-          title: "Re-optimized — wider this time"
+          title: "Re-optimized - wider this time"
           body: >-
             With polymorphic feedback (Smi or String), TurboFan eventually
             recompiles: the new code checks which type arrived and runs

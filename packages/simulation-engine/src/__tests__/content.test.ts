@@ -72,7 +72,7 @@ describe('docker-run content', () => {
     });
     expect((s.components['image-store'].data.layers as unknown[]).length).toBe(4);
     expect((s.components.container.data.stack as unknown[]).length).toBe(5);
-    expect(s.log.map((l) => l.text)).toContain('STATUS: Running — nginx is up');
+    expect(s.log.map((l) => l.text)).toContain('STATUS: Running - nginx is up');
     // Mid-simulation rewind is clean.
     const mid = deriveState(events, 3, pull.components);
     expect(mid.components.container.status).toBe('absent');

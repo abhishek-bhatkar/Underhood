@@ -1,7 +1,7 @@
 concepts:
   client:
     name: Client
-    summary: "Users' browsers — the traffic source."
+    summary: "Users' browsers - the traffic source."
     fields:
       - { key: url, label: request }
     details:
@@ -22,19 +22,19 @@ concepts:
     fields:
       - { key: instances, label: instances, list: true }
     details:
-      - "Stateless: any instance serves any request — that's why LB works."
+      - "Stateless: any instance serves any request - that's why LB works."
       - "Cache-aside pattern: cache first, DB on miss, fill cache after."
       - "Circuit breakers turn a dead dependency into fast failures."
 
   cache:
     name: "Cache (Redis)"
-    summary: "Hot mappings in memory — the latency killer."
+    summary: "Hot mappings in memory - the latency killer."
     fields:
       - { key: entries, label: entries, list: true }
     details:
       - "TTLs bound staleness; expired keys fall through to the DB."
       - "Hit rate is the design metric: every hit is a DB query avoided."
-      - "Keeps serving during DB failover — hot traffic survives outages."
+      - "Keeps serving during DB failover - hot traffic survives outages."
 
   db:
     name: "Primary database"
@@ -48,10 +48,10 @@ concepts:
 
   replica:
     name: "Replica database"
-    summary: "Streaming copy of the primary — reads today, survival tomorrow."
+    summary: "Streaming copy of the primary - reads today, survival tomorrow."
     fields:
       - { key: role, label: role }
     details:
-      - "Replicates writes asynchronously — small lag is normal."
+      - "Replicates writes asynchronously - small lag is normal."
       - "Promoted to primary when the primary dies."
       - "After failover the old primary rejoins as a replica."

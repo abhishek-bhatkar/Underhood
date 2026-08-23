@@ -12,7 +12,7 @@ export function InspectorPanel({ componentId, concept, runtime, onClose }: Inspe
   const rows: { k: string; v: string; cls?: string }[] = [
     {
       k: 'status',
-      v: runtime?.status ?? '—',
+      v: runtime?.status ?? '-',
       cls:
         runtime?.status === 'error'
           ? 'err'
@@ -27,7 +27,7 @@ export function InspectorPanel({ componentId, concept, runtime, onClose }: Inspe
       if (field.list) {
         return { k: field.label, v: Array.isArray(value) ? String(value.length) : '0' };
       }
-      if (value === undefined || value === null || value === '') return { k: field.label, v: '—' };
+      if (value === undefined || value === null || value === '') return { k: field.label, v: '-' };
       if (value === true) return { k: field.label, v: 'yes', cls: 'on' };
       return { k: field.label, v: String(value) };
     }),

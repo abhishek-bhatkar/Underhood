@@ -23,7 +23,7 @@ scenarios:
           title: "psql sends the query"
           body: >-
             You type the query in psql, which ships the SQL text to the
-            server over its connection. The server now has a string — it
+            server over its connection. The server now has a string - it
             doesn't know what it means yet.
           concept: "SQL is sent as text: parsing, planning, and execution are server-side stages of one string."
         effects:
@@ -49,7 +49,7 @@ scenarios:
             The parser tokenizes and builds a parse tree, checking syntax
             and that `users` and `email` exist in the catalog. Semantics
             like "which plan is fast" belong to the next stage.
-          concept: "Parsing checks WHAT you said — planning decides HOW to do it."
+          concept: "Parsing checks WHAT you said - planning decides HOW to do it."
         effects:
           - op: status
             component: planner
@@ -98,7 +98,7 @@ scenarios:
           title: "B-tree descent: root → leaf"
           body: >-
             The executor descends the B-tree on email: root, one internal
-            page, leaf — three page visits. The leaf entry holds the key
+            page, leaf - three page visits. The leaf entry holds the key
             and the ctid (42, 7): the physical address of the heap tuple.
           concept: "An index maps keys to row locations: the descent is O(log n) page reads, not a scan."
         effects:
@@ -132,7 +132,7 @@ scenarios:
         explanation:
           title: "Heap fetch: page 42, slot 7"
           body: >-
-            The ctid points into the heap — the table's actual storage.
+            The ctid points into the heap - the table's actual storage.
             The executor asks for page 42 and reads tuple slot 7. The
             index is a shortcut to it, never a copy of it.
           concept: "Indexes point; the heap stores: secondary indexes and live data are separate structures."
@@ -158,7 +158,7 @@ scenarios:
           title: "Buffer pool miss → read from disk"
           body: >-
             Page 42 isn't in shared buffers, so PostgreSQL reads it from
-            the tablespace file into the buffer pool — then pins it while
+            the tablespace file into the buffer pool - then pins it while
             the executor holds it. A second query for this page would hit
             the cache.
           concept: "All heap/index access flows through the buffer pool: cache hits are the biggest silent performance win."
@@ -169,7 +169,7 @@ scenarios:
           - op: push
             component: buffer-pool
             key: cached
-            value: { label: "page 42 (pinned) — disk read" }
+            value: { label: "page 42 (pinned) - disk read" }
           - op: label
             component: buffer-pool
             text: "miss -> read(42)"
@@ -185,7 +185,7 @@ scenarios:
           body: >-
             PostgreSQL reads the tuple's xmin/xmax headers to decide
             whether this version is visible to your transaction's
-            snapshot — MVCC at work. It is, so the row qualifies.
+            snapshot - MVCC at work. It is, so the row qualifies.
           concept: "MVCC: every tuple carries transaction metadata; readers never block writers."
         effects:
           - op: label
@@ -202,7 +202,7 @@ scenarios:
           title: "1 row returned"
           body: >-
             The executor yields the row, psql formats it, and you see
-            Dev. Total: a few page reads instead of 100k scanned rows —
+            Dev. Total: a few page reads instead of 100k scanned rows -
             that's the whole story of why indexes matter.
           concept: "Same query, one indexed page vs 100k rows scanned: the plan IS the performance."
         effects:
@@ -256,7 +256,7 @@ scenarios:
         explanation:
           title: "BEGIN: a transaction starts"
           body: >-
-            Your transaction gets an ID (5556) and a snapshot — a view of
+            Your transaction gets an ID (5556) and a snapshot - a view of
             which other transactions' changes it may see. From here,
             isolation rules apply.
           concept: "A transaction is a unit with an identity and a snapshot: isolation is about snapshots, not locks alone."
@@ -287,7 +287,7 @@ scenarios:
           title: "Parse, plan: locate row id = 7"
           body: >-
             The primary key index descends to id 7, finding ctid (12, 3).
-            Parsed and planned as before — compressed here — the executor
+            Parsed and planned as before - compressed here - the executor
             now has the target.
           concept: "Updates are locate-then-modify: the index finds, the heap changes."
         effects:
@@ -319,9 +319,9 @@ scenarios:
           body: >-
             Before modifying, the transaction takes a row-level lock and
             sets the old tuple's xmax to 5556. A concurrent UPDATE of the
-            same row would wait here — this is where write contention
+            same row would wait here - this is where write contention
             lives.
-          concept: "Locks serialize writers to the same row only — different rows proceed in parallel."
+          concept: "Locks serialize writers to the same row only - different rows proceed in parallel."
         effects:
           - op: status
             component: pages
@@ -343,11 +343,11 @@ scenarios:
         explanation:
           title: "MVCC: new version written alongside"
           body: >-
-            PostgreSQL doesn't overwrite in place — it writes a new tuple
+            PostgreSQL doesn't overwrite in place - it writes a new tuple
             version with xmin 5556 into the same page and marks the index
             to find both. Readers with older snapshots keep seeing the old
             row; new ones see this one after commit.
-          concept: "MVCC: an UPDATE is insert-new + mark-old — readers never wait for writers."
+          concept: "MVCC: an UPDATE is insert-new + mark-old - readers never wait for writers."
         effects:
           - op: push
             component: pages
@@ -370,7 +370,7 @@ scenarios:
             write-ahead log as bytes describing the physical change. WAL
             is sequential and cheap; data pages are scattered and
             deferred.
-          concept: "Write-ahead logging: log the change before applying it — crash recovery replays the log."
+          concept: "Write-ahead logging: log the change before applying it - crash recovery replays the log."
         effects:
           - op: status
             component: wal
@@ -394,9 +394,9 @@ scenarios:
           body: >-
             The commit record is written and fsynced to disk. Only after
             that durable ack does PostgreSQL report success. The data
-            pages themselves may still be dirty in memory — the log is
+            pages themselves may still be dirty in memory - the log is
             the truth.
-          concept: "COMMIT means the log is durable — data pages catch up later. That's the whole durability trick."
+          concept: "COMMIT means the log is durable - data pages catch up later. That's the whole durability trick."
         effects:
           - op: set
             component: wal
@@ -412,7 +412,7 @@ scenarios:
         target: terminal
         duration: 800
         explanation:
-          title: "Committed — v2 becomes visible"
+          title: "Committed - v2 becomes visible"
           body: >-
             The transaction's snapshot ends; txid 5556 is marked
             committed and new readers of id 7 resolve to 'Dev Sr'. If the
@@ -442,4 +442,4 @@ scenarios:
             component: terminal
             text: "UPDATE 1 · COMMIT"
           - op: log
-            text: "psql: UPDATE 1 — committed"
+            text: "psql: UPDATE 1 - committed"

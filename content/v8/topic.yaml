@@ -1,4 +1,4 @@
 name: V8
 description: >-
-  Parsing, bytecode, feedback, and tiering — what happens when a
+  Parsing, bytecode, feedback, and tiering - what happens when a
   JavaScript function runs.

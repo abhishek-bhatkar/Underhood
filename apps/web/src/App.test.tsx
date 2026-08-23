@@ -8,11 +8,15 @@ afterEach(() => {
 });
 
 describe('App routing', () => {
-  it('home lists topics', () => {
+  it('home lists topics with the hero', () => {
     window.location.hash = '';
     render(<App />);
-    expect(screen.getByText('Docker')).toBeTruthy();
-    expect(screen.getByText(/watch technical systems actually work/i)).toBeTruthy();
+    expect(screen.getByText('docker')).toBeTruthy();
+    expect(screen.getByText(/watch it work/i)).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
+      /Don't just read how it works/i,
+    );
+    expect(screen.getAllByRole('heading', { level: 2 }).length).toBe(9);
   });
 
   it('docker experience steps through events', () => {

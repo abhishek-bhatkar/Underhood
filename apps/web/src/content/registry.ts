@@ -25,7 +25,7 @@ export interface TopicDef {
   experiences: Record<string, ExperienceDef>;
 }
 
-// Discover every content YAML at build time — adding a topic is a new
+// Discover every content YAML at build time - adding a topic is a new
 // directory under content/, no code changes.
 const files = import.meta.glob('../../../../content/**\/*.yaml', {
   query: '?raw',

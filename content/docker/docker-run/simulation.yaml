@@ -1,4 +1,4 @@
-# Docker run nginx — event sequences as data.
+# Docker run nginx - event sequences as data.
 # State transitions are declarative `effects` interpreted by the engine.
 scenarios:
   - id: pull
@@ -23,7 +23,7 @@ scenarios:
           body: >-
             You type the command in your terminal. The Docker CLI parses the
             arguments: image "nginx", no explicit name, default tag "latest".
-            The CLI itself doesn't create anything — it is a thin client that
+            The CLI itself doesn't create anything - it is a thin client that
             will ask the Docker daemon to do the work.
           concept: >-
             docker run is shorthand for two API calls: create a container,
@@ -57,7 +57,7 @@ scenarios:
             The CLI connects to the daemon over a local Unix socket
             (/var/run/docker.sock) and sends a REST request describing the
             desired container: image, env, ports, command. Docker is a
-            client/server program — the CLI is just one possible client.
+            client/server program - the CLI is just one possible client.
           concept: >-
             The CLI is not the container. The daemon (dockerd) performs all
             the work.
@@ -89,7 +89,7 @@ scenarios:
             Before touching the network, the daemon checks its local content
             store: is there an image named nginx:latest on this machine?
             Images are stored as content-addressed layers, not single files.
-          concept: Local first — the daemon only pulls from a registry if the image is missing.
+          concept: Local first - the daemon only pulls from a registry if the image is missing.
         effects:
           - op: status
             component: daemon
@@ -114,7 +114,7 @@ scenarios:
           body: >-
             This machine has never pulled nginx, so there is nothing to run
             yet. Docker prints the familiar message and transparently falls
-            back to pulling the image from a registry — no separate
+            back to pulling the image from a registry - no separate
             "docker pull" needed.
           concept: docker run = pull (if needed) + create + start.
         effects:
@@ -138,7 +138,7 @@ scenarios:
           body: >-
             The daemon authenticates to Docker Hub, resolves the tag nginx
             (short for nginx:latest) to an immutable digest, and asks for the
-            image manifest — the index that lists every layer the image needs.
+            image manifest - the index that lists every layer the image needs.
           concept: >-
             A registry stores manifests and layer blobs, each addressed by
             the SHA-256 of its content.
@@ -165,7 +165,7 @@ scenarios:
           title: "Manifest fetched"
           body: >-
             The manifest describes the image's configuration and its stack of
-            filesystem layers. We show four conceptual layers here — a real
+            filesystem layers. We show four conceptual layers here - a real
             nginx:latest manifest lists more, with the same mechanics.
           concept: An image is a stack of layers, not a single disk image.
         effects:
@@ -187,11 +187,11 @@ scenarios:
         explanation:
           title: "Pulling layer 1/4: base image"
           body: >-
-            The daemon downloads the base layer — a minimal Debian root
-            filesystem — as a gzipped tar blob, verifies it against the
+            The daemon downloads the base layer - a minimal Debian root
+            filesystem - as a gzipped tar blob, verifies it against the
             SHA-256 digest in the manifest, and unpacks it into the local
             content store.
-          concept: Layers are cached — a second nginx pull, or any other image built on bookworm-slim, reuses this blob.
+          concept: Layers are cached - a second nginx pull, or any other image built on bookworm-slim, reuses this blob.
         effects: &layer-pull-effects
           - op: status
             component: image-store
@@ -230,7 +230,7 @@ scenarios:
           body: >-
             Next comes the layer with apt-installed system libraries and
             utilities the server needs. It only contains the diff from the
-            layer below — files added or changed by that build step.
+            layer below - files added or changed by that build step.
           concept: Each layer is a diff on top of the previous one.
         effects: *layer-pull-effects
 
@@ -269,7 +269,7 @@ scenarios:
             The final layer adds configuration files and the entrypoint
             script. All four blobs are now stored locally, read-only, under
             /var/lib/docker. This is what "having an image" means.
-          concept: Image layers are immutable and read-only — forever.
+          concept: Image layers are immutable and read-only - forever.
         effects: *layer-pull-effects
 
       - type: IMAGE_READY
@@ -317,7 +317,7 @@ scenarios:
             The daemon writes the container's identity and config, and
             allocates one new thin writable layer that sits on top of the
             image's read-only layers (an overlayfs upper dir). Nothing is
-            running yet — the container exists as a defined, stopped thing.
+            running yet - the container exists as a defined, stopped thing.
           concept: >-
             Image vs container: the image is the template; the container is
             an instance of it with its own writable layer.
@@ -371,7 +371,7 @@ scenarios:
           title: "Network: bridge, IP 172.17.0.2"
           body: >-
             The daemon creates a network namespace for the container and a
-            virtual Ethernet pair — one end (veth7a2b) inside the container,
+            virtual Ethernet pair - one end (veth7a2b) inside the container,
             the other plugged into the docker0 bridge on the host. The
             container gets IP 172.17.0.2 and reaches the outside world
             through NAT.
@@ -407,7 +407,7 @@ scenarios:
             that namespace. The master process forks workers. All of this is
             ordinary processes on the host kernel.
           concept: >-
-            A container is not a miniature VM — it is a set of isolated
+            A container is not a miniature VM - it is a set of isolated
             processes sharing the host kernel.
         effects:
           - op: set
@@ -435,7 +435,7 @@ scenarios:
             keeps supervising: it captures stdout, restart policies, and
             lifecycle events from here on.
           concept: >-
-            The daemon stays responsible for the container's whole life —
+            The daemon stays responsible for the container's whole life -
             the CLI can exit and the container keeps running.
         effects:
           - op: status
@@ -462,7 +462,7 @@ scenarios:
             component: terminal
             status: done
           - op: log
-            text: "STATUS: Running — nginx is up"
+            text: "STATUS: Running - nginx is up"
 
   - id: cached
     name: Image cached
@@ -486,7 +486,7 @@ scenarios:
           body: >-
             Second run of the same command on a machine that already has the
             image. Watch how much of the pipeline is skipped.
-          concept: Same command, different path — the local store decides.
+          concept: Same command, different path - the local store decides.
         effects:
           - op: set
             component: terminal
@@ -542,7 +542,7 @@ scenarios:
         explanation:
           title: The daemon looks for the image locally
           body: >-
-            The daemon checks the local content store for nginx:latest —
+            The daemon checks the local content store for nginx:latest -
             exactly the same lookup as before.
           concept: The lookup is the branch point of docker run.
         effects:
@@ -593,7 +593,7 @@ scenarios:
             A new container ID, a new thin writable layer on the same
             read-only image layers. Two containers from one image share every
             image layer and diverge only in their writable tops.
-          concept: One image, many containers — each with its own writable layer.
+          concept: One image, many containers - each with its own writable layer.
         effects:
           - op: status
             component: container
@@ -670,7 +670,7 @@ scenarios:
         explanation:
           title: "PID 1: nginx: master process"
           body: >-
-            Namespaces, cgroups, assembled filesystem — then nginx starts as
+            Namespaces, cgroups, assembled filesystem - then nginx starts as
             PID 1 in the new container, isolated from the first one.
           concept: Isolation comes from namespaces and cgroups, one set per container.
         effects:
@@ -694,7 +694,7 @@ scenarios:
         explanation:
           title: "STATUS: Running"
           body: >-
-            Done — and noticeably faster, because the entire pull phase was
+            Done - and noticeably faster, because the entire pull phase was
             skipped by a cache hit.
           concept: Cached layers + local creation = sub-second starts.
         effects:
@@ -722,4 +722,4 @@ scenarios:
             component: terminal
             status: done
           - op: log
-            text: "STATUS: Running — nginx is up"
+            text: "STATUS: Running - nginx is up"

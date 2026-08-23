@@ -2,7 +2,7 @@ title: What happens when you run a Java program?
 summary: >-
   Follow one program from source to execution: javac compiles it to portable
   bytecode, the java launcher starts a JVM, classloaders find, verify, and
-  prepare the classes, and the execution engine runs them — frames pushing
+  prepare the classes, and the execution engine runs them - frames pushing
   and popping on the thread stack, objects appearing in the heap, hot loops
   compiled to native code by the JIT. Play it, step through it, and click
   any component to inspect it.

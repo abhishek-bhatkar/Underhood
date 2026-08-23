@@ -21,7 +21,7 @@ scenarios:
           title: "A request arrives: sho.rt/abc123"
           body: >-
             A user's browser asks the shortener to resolve abc123. Traffic
-            arrives at the load balancer — the fixed front door that hides
+            arrives at the load balancer - the fixed front door that hides
             how many API instances exist behind it.
           concept: "The load balancer decouples clients from topology: users see one name, you run N servers."
         effects:
@@ -47,8 +47,8 @@ scenarios:
         explanation:
           title: "LB picks api-2 (least connections)"
           body: >-
-            The balancer routes by least-open-connections — api-1 and api-3
-            are busier — and forwards the request. Any instance can serve
+            The balancer routes by least-open-connections - api-1 and api-3
+            are busier - and forwards the request. Any instance can serve
             any request: they're stateless equals.
           concept: "Horizontal scaling needs interchangeable servers: state lives elsewhere (cache, DB) so any node can serve."
         effects:
@@ -94,7 +94,7 @@ scenarios:
           title: "Cache MISS"
           body: >-
             Nobody has requested abc123 recently, so the key has expired.
-            api-2 must ask the source of truth — this is the slow path
+            api-2 must ask the source of truth - this is the slow path
             every cache exists to avoid.
           concept: "A miss costs cache + DB latency; a hit costs cache only. Hit rate is the metric."
         effects:
@@ -114,7 +114,7 @@ scenarios:
         explanation:
           title: "Database: index lookup on code"
           body: >-
-            The primary runs an indexed lookup — code is the primary key —
+            The primary runs an indexed lookup - code is the primary key -
             and finds the row in one B-tree descent, with the replica
             shadowing reads it isn't needed for here.
           concept: "The DB is the bottleneck of last resort: indexes + cache keep it out of the hot path."
@@ -142,9 +142,9 @@ scenarios:
           title: "Cache filled (TTL 300s)"
           body: >-
             api-2 writes the mapping back to the cache with a TTL. For the
-            next five minutes, every request for abc123 stops here — the
+            next five minutes, every request for abc123 stops here - the
             database never hears about them.
-          concept: "One DB read amortizes into thousands of cache hits — that's the cache's whole business case."
+          concept: "One DB read amortizes into thousands of cache hits - that's the cache's whole business case."
         effects:
           - op: push
             component: cache
@@ -184,7 +184,7 @@ scenarios:
           title: "Another request for the same code"
           body: >-
             A different user hits the same short link moments later. Same
-            door, same routing — but the next hop is about to be much
+            door, same routing - but the next hop is about to be much
             shorter.
           concept: "Popularity is skewed: a few codes take most traffic, which is exactly what caches exploit."
         effects:
@@ -202,12 +202,12 @@ scenarios:
         target: api
         duration: 800
         explanation:
-          title: "Cache HIT — 2ms"
+          title: "Cache HIT - 2ms"
           body: >-
             api-1 finds abc123 in the cache and answers directly. No
             database query, no extra latency: the request completed before
             the slow path would have reached the DB.
-          concept: "The cache turns a 45ms read into a 2ms read — capacity you didn't buy, you borrowed."
+          concept: "The cache turns a 45ms read into a 2ms read - capacity you didn't buy, you borrowed."
         effects:
           - op: label
             component: cache
@@ -216,7 +216,7 @@ scenarios:
             component: api
             text: "hit -> respond"
           - op: log
-            text: "cache: HIT — 2ms, no db query"
+            text: "cache: HIT - 2ms, no db query"
 
       - type: SETTLED
         source: api
@@ -250,7 +250,7 @@ scenarios:
             component: replica
             text: "replicating writes"
           - op: log
-            text: "steady state — cache hit rate ~97%"
+            text: "steady state - cache hit rate ~97%"
 
   - id: db-failure
     name: Database failure
@@ -273,7 +273,7 @@ scenarios:
         explanation:
           title: "Fast-forward: system under load"
           body: >-
-            Same architecture, steady traffic, healthy cache hit rate —
+            Same architecture, steady traffic, healthy cache hit rate -
             until the primary database stops answering.
           concept: "Failure scenarios start from the architecture you already trust."
         effects:
@@ -308,7 +308,7 @@ scenarios:
             value: { label: "abc123 -> example.com (ttl 300)" }
           - op: label
             component: cache
-            text: "MISS — expired"
+            text: "MISS - expired"
           - op: status
             component: replica
             status: done
@@ -316,7 +316,7 @@ scenarios:
             component: replica
             text: "replicating writes"
           - op: log
-            text: "GET $payload.url — cache MISS"
+            text: "GET $payload.url - cache MISS"
 
       - type: DB_DIES
         source: api
@@ -326,9 +326,9 @@ scenarios:
           title: "Primary database: unreachable"
           body: >-
             The primary's host dies mid-request. api-2's query hangs until
-            its driver timeout fires — connection refused. Every request
+            its driver timeout fires - connection refused. Every request
             that misses the cache is now heading for the same wall.
-          concept: "A dead dependency doesn't fail fast by itself — timeouts make failure observable."
+          concept: "A dead dependency doesn't fail fast by itself - timeouts make failure observable."
         effects:
           - op: status
             component: db
@@ -354,9 +354,9 @@ scenarios:
           body: >-
             Cache misses pile up behind the dead primary and api instances
             start returning 5xx. Users see failures; monitoring pages the
-            on-call. The LB can't help — every backend has the same sick
+            on-call. The LB can't help - every backend has the same sick
             dependency.
-          concept: "Redundant servers don't fix a dead shared dependency — the DB is a single point of failure until failover."
+          concept: "Redundant servers don't fix a dead shared dependency - the DB is a single point of failure until failover."
         effects:
           - op: status
             component: lb
@@ -378,10 +378,10 @@ scenarios:
           title: "Circuit breaker opens"
           body: >-
             After enough failures, each api instance's circuit breaker
-            opens: calls to the DB fail fast — in milliseconds, not
-            seconds — freeing threads and letting the LB health-check
+            opens: calls to the DB fail fast - in milliseconds, not
+            seconds - freeing threads and letting the LB health-check
             instead of drowning. Failing fast is a feature.
-          concept: "A circuit breaker converts slow failure into fast failure — protecting the rest of the system."
+          concept: "A circuit breaker converts slow failure into fast failure - protecting the rest of the system."
         effects:
           - op: status
             component: api
@@ -390,7 +390,7 @@ scenarios:
             component: api
             text: "breaker OPEN: fail fast"
           - op: log
-            text: "breaker: open — db calls fail fast"
+            text: "breaker: open - db calls fail fast"
 
       - type: FAILOVER
         source: db
@@ -428,13 +428,13 @@ scenarios:
         target: client
         duration: 900
         explanation:
-          title: "Breaker closes — 200s again"
+          title: "Breaker closes - 200s again"
           body: >-
             Half-open probes succeed against the new primary, the breakers
             close, and the 5xx rate falls back to zero. The old primary's
             host will rejoin later as a replica. Notice the cache kept
-            serving hits throughout — hot traffic never noticed.
-          concept: "Recovery is staged: fail fast, promote, probe, reopen — and the cache shielded most users throughout."
+            serving hits throughout - hot traffic never noticed.
+          concept: "Recovery is staged: fail fast, promote, probe, reopen - and the cache shielded most users throughout."
         effects:
           - op: status
             component: api
@@ -458,4 +458,4 @@ scenarios:
             component: client
             text: "302s restored ✓"
           - op: log
-            text: "recovered — cache hits never stopped"
+            text: "recovered - cache hits never stopped"

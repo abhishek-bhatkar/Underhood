@@ -14,7 +14,7 @@ concepts:
     details:
       - "Tokenizes, builds the AST, reports syntax errors."
       - "Function bodies can be pre-parsed (skipped) until first call."
-      - "The AST feeds bytecode compilation — not execution directly."
+      - "The AST feeds bytecode compilation - not execution directly."
 
   ast:
     name: AST
@@ -24,11 +24,11 @@ concepts:
     details:
       - "FunctionDecl, params, statements, expressions."
       - "One representation of many: source in, tree, bytecode, machine code out."
-      - "DevTools and tooling consume ASTs too — one shape, many consumers."
+      - "DevTools and tooling consume ASTs too - one shape, many consumers."
 
   ignition:
     name: "Ignition (interpreter)"
-    summary: "Register-machine bytecode interpreter — fast to start."
+    summary: "Register-machine bytecode interpreter - fast to start."
     fields:
       - { key: calls, label: call count }
       - { key: bytecode, label: bytecode, list: true }
@@ -52,7 +52,7 @@ concepts:
     summary: "Compiles hot functions to machine code using feedback."
     details:
       - "Speculates on types and inlines based on feedback and call counts."
-      - "Emits guarded fast paths — assumptions checked at run time."
+      - "Emits guarded fast paths - assumptions checked at run time."
       - "Conceptual pipeline here: real V8 also has Sparkplug and Maglev tiers."
 
   machine-code:
@@ -62,7 +62,7 @@ concepts:
       - { key: tier, label: tier }
       - { key: code, label: code, list: true }
     details:
-      - "Calls jump straight here once optimized — no dispatch overhead."
+      - "Calls jump straight here once optimized - no dispatch overhead."
       - "Guards bail to deoptimization when speculation fails."
       - "Recompiles wider after type mixes appear."
 
@@ -74,4 +74,4 @@ concepts:
     details:
       - "New allocations start in the young generation (scavenger GC)."
       - "Survivors promote; long-lived objects are marked-and-swept."
-      - "Retained references prevent collection — leaks are reachable graphs."
+      - "Retained references prevent collection - leaks are reachable graphs."

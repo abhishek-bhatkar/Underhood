@@ -23,7 +23,7 @@ export function Timeline({ events, log, currentStep, player }: TimelineProps) {
       <div
         className="timeline-ticks"
         role="group"
-        aria-label="Timeline — one button per event"
+        aria-label="Timeline - one button per event"
       >
         {events.map((event, i) => (
           <button
