@@ -21,6 +21,11 @@ export function ExperienceView({ experience }: { experience: ExperienceDef }) {
     setSelected(null);
   }, [experience]);
 
+  useEffect(() => {
+    document.body.classList.add('app-shell');
+    return () => document.body.classList.remove('app-shell');
+  }, []);
+
   const switchScenario = (id: string) => {
     setScenarioId(id);
     setSelected(null);
