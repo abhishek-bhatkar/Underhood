@@ -6,6 +6,7 @@ import { ControlsBar } from './ControlsBar';
 import { ExplanationPanel } from './ExplanationPanel';
 import { Timeline } from './Timeline';
 import { InspectorPanel } from './InspectorPanel';
+import { ThemeToggle } from './ThemeToggle';
 
 /** One experience: canvas + rail + transport, fully driven by content. */
 export function ExperienceView({ experience }: { experience: ExperienceDef }) {
@@ -52,6 +53,7 @@ export function ExperienceView({ experience }: { experience: ExperienceDef }) {
             ))}
           </div>
         ) : null}
+        <ThemeToggle />
       </header>
       <div className="app-body">
         <div className="app-canvas-wrap">

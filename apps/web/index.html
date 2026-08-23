@@ -25,6 +25,16 @@
     />
   </head>
   <body>
+    <script>
+      // Set the theme before first paint to avoid a flash of the wrong mode.
+      try {
+        var t = localStorage.getItem('underhood-theme');
+        if (t !== 'light' && t !== 'dark') {
+          t = matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark';
+        }
+        document.documentElement.dataset.theme = t;
+      } catch (e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

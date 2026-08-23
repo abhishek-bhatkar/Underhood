@@ -77,12 +77,12 @@ export function Canvas({ visuals, state, currentEvent, selected, onSelect }: Can
         animated: isActive,
         className: isActive ? 'active' : undefined,
         type: 'smoothstep',
-        style: { borderRadius: 8, stroke: isActive ? '#ffb454' : undefined },
+        // Strokes resolve through CSS variables so they follow the active theme.
+        style: { borderRadius: 8, stroke: isActive ? 'var(--work)' : undefined },
         markerEnd: {
           type: MarkerType.ArrowClosed,
           width: 13,
           height: 13,
-          color: isActive ? '#ffb454' : '#223350',
         },
       };
     });

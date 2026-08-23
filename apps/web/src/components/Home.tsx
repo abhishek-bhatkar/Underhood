@@ -1,4 +1,5 @@
 import { topics, type ExperienceDef } from '../content/registry';
+import { ThemeToggle } from './ThemeToggle';
 
 function experienceSteps(experience: ExperienceDef): number {
   return Object.values(experience.scenarios).reduce((sum, s) => sum + s.events.length, 0);
@@ -45,6 +46,8 @@ export function Home() {
       </a>
       <header className="app-header">
         <span className="app-brand">Underhood</span>
+        <span className="spacer" />
+        <ThemeToggle />
       </header>
       <main className="home-main" id="home-main">
         <section className="home-hero">

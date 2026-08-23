@@ -55,6 +55,8 @@ page, and:
 4. Switch **scenarios** (Pull image vs Image cached, Run program vs Stack
    overflow, …) and watch the same machinery take a different path.
 5. Scrub the **timeline** at the bottom to jump to any event.
+6. Switch **dark / light** in the header. The choice is remembered; first
+   visit follows your system preference.
 
 ## Architecture
 

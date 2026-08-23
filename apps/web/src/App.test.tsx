@@ -42,4 +42,18 @@ describe('App routing', () => {
     render(<App />);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(/Java program/i);
   });
+
+  it('theme toggle switches the document theme and persists it', () => {
+    window.location.hash = '';
+    localStorage.removeItem('underhood-theme');
+    render(<App />);
+    const lightButtons = screen.getAllByRole('button', { name: 'light' });
+    fireEvent.click(lightButtons[0]);
+    expect(document.documentElement.dataset.theme).toBe('light');
+    expect(localStorage.getItem('underhood-theme')).toBe('light');
+    const darkButtons = screen.getAllByRole('button', { name: 'dark' });
+    fireEvent.click(darkButtons[0]);
+    expect(document.documentElement.dataset.theme).toBe('dark');
+    expect(localStorage.getItem('underhood-theme')).toBe('dark');
+  });
 });
