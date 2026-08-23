@@ -1,4 +1,4 @@
 name: JVM
 description: >-
-  The Java Virtual Machine — compilation to bytecode, class loading, runtime
+  The Java Virtual Machine - compilation to bytecode, class loading, runtime
   areas, and execution, starting with what happens when you run a program.

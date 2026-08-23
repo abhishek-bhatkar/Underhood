@@ -1,12 +1,12 @@
 concepts:
   terminal:
     name: Terminal (psql)
-    summary: "The SQL client — ships text, formats rows."
+    summary: "The SQL client - ships text, formats rows."
     fields:
       - { key: command, label: query }
     details:
       - "The server receives the query as an opaque string over the connection."
-      - "EXPLAIN shows the plan this pipeline chose — ANALYZE runs it."
+      - "EXPLAIN shows the plan this pipeline chose - ANALYZE runs it."
 
   parser:
     name: Parser
@@ -23,12 +23,12 @@ concepts:
       - { key: plan, label: chosen plan }
     details:
       - "Enumerates plans (index vs seq scan, join orders) and costs them."
-      - "Costs come from table statistics (pg_statistic) — stale stats, bad plans."
+      - "Costs come from table statistics (pg_statistic) - stale stats, bad plans."
       - "The plan is a tree of executor nodes: Scan, Join, Sort, Aggregate…"
 
   executor:
     name: Executor
-    summary: "Runs the plan tree — a pipeline of nodes pulling tuples."
+    summary: "Runs the plan tree - a pipeline of nodes pulling tuples."
     details:
       - "Volcano model: each node asks the one below for the next tuple."
       - "Applies filters, projections, and checks MVCC visibility."
@@ -42,11 +42,11 @@ concepts:
     details:
       - "Descent is a few page reads: root → internal → leaf."
       - "Leaves hold (key, ctid); the heap tuple lives elsewhere."
-      - "Indexes slow writes and speed reads — the planner decides when they pay off."
+      - "Indexes slow writes and speed reads - the planner decides when they pay off."
 
   pages:
     name: Heap pages
-    summary: "The table's actual storage — pages of tuple slots."
+    summary: "The table's actual storage - pages of tuple slots."
     fields:
       - { key: heap, label: tuples, list: true }
     details:
@@ -56,13 +56,13 @@ concepts:
 
   buffer-pool:
     name: Buffer pool
-    summary: "Shared-memory cache of 8 KB pages — every access goes through it."
+    summary: "Shared-memory cache of 8 KB pages - every access goes through it."
     fields:
       - { key: cached, label: cached, list: true }
     details:
       - "Hit: served from RAM. Miss: read from tablespace and pinned."
       - "shared_buffers sizing is a top PostgreSQL knob."
-      - "Dirty pages flush to disk lazily — WAL ordering protects them."
+      - "Dirty pages flush to disk lazily - WAL ordering protects them."
 
   wal:
     name: WAL
@@ -72,5 +72,5 @@ concepts:
       - { key: flushed, label: flushed }
     details:
       - "Physical change records appended before data pages are dirtied."
-      - "COMMIT fsyncs the log — that fsync IS durability."
+      - "COMMIT fsyncs the log - that fsync IS durability."
       - "Crash recovery replays WAL to reconstruct exactly the committed state."

@@ -14,7 +14,7 @@ export function ListNode(props: NodeProps) {
   return (
     <NodeShell props={props} title={config.label ?? config.id} ghost={config.absentLabel}>
       <div className="list-rows">
-        {items.length === 0 ? <div className="list-empty">{config.emptyLabel ?? '—'}</div> : null}
+        {items.length === 0 ? <div className="list-empty">{config.emptyLabel ?? '-'}</div> : null}
         {items.map((item, i) => (
           <div key={i} className={`row${item.variant ? ` ${String(item.variant)}` : ''}`}>
             <span className="row-dot" />

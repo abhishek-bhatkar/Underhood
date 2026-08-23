@@ -6,24 +6,24 @@ concepts:
       - { key: command, label: command }
     details:
       - "javac and java are separate tools: compile time and run time are distinct phases."
-      - "The JVM is the process started by java — your program runs inside it."
+      - "The JVM is the process started by java - your program runs inside it."
 
   javac:
-    name: "javac — the Java compiler"
+    name: "javac - the Java compiler"
     summary: "Compiles source to JVM bytecode ahead of time."
     details:
       - "Reads .java, type-checks, and writes .class files."
-      - "Bytecode is an intermediate instruction set — not the machine code of any real CPU."
+      - "Bytecode is an intermediate instruction set - not the machine code of any real CPU."
       - "The compiler checks types and visibility, not run-time resource limits like stack depth."
 
   classfile:
-    name: "Hello.class — bytecode"
+    name: "Hello.class - bytecode"
     summary: "A portable, compact class file the JVM knows how to load."
     fields:
       - { key: entries, label: contents, list: true }
     details:
       - "Structure: constant pool, fields, methods, bytecode instructions."
-      - "The same file runs on any JVM implementation — portability lives here."
+      - "The same file runs on any JVM implementation - portability lives here."
       - "Class files are the contract between compiler and JVM, defined by the JVM spec."
 
   classloader:
@@ -31,7 +31,7 @@ concepts:
     summary: "Finds, verifies, prepares, and initializes classes on demand."
     details:
       - "Hierarchy: bootstrap (core JVM classes) -> platform -> application (your classpath)."
-      - "Parent delegation: every loader asks its parent first — core classes can't be spoofed."
+      - "Parent delegation: every loader asks its parent first - core classes can't be spoofed."
       - "Phases: load (find bytes) -> link (verify, prepare, resolve) -> initialize (run statics)."
       - "Verification is the security boundary: malformed bytecode never executes."
 
@@ -41,7 +41,7 @@ concepts:
     fields:
       - { key: classes, label: classes, list: true }
     details:
-      - "Defined classes live here — one entry per class per classloader."
+      - "Defined classes live here - one entry per class per classloader."
       - "Holds the run-time constant pool and method bytecode."
       - "Shared across threads (HotSpot historically implemented it as part of the heap: metaspace)."
 
@@ -52,18 +52,18 @@ concepts:
       - { key: objects, label: objects, list: true }
     details:
       - "Allocation is fast: bump-the-pointer in a thread-local young generation."
-      - "Objects live while reachable from a GC root — stacks, statics, JNI handles."
+      - "Objects live while reachable from a GC root - stacks, statics, JNI handles."
       - "Garbage collection reclaims unreachable objects; the shared heap needs it, stacks don't."
 
   stack:
     name: Thread stack
-    summary: "Per-thread stack of call frames — locals, operand stacks, returns."
+    summary: "Per-thread stack of call frames - locals, operand stacks, returns."
     fields:
       - { key: frames, label: frames, list: true }
     details:
       - "One frame per method invocation: locals, operand stack, return address."
       - "Pushed on call, popped on return; locals die with the frame."
-      - "Fixed size per thread (-Xss) — deep recursion throws StackOverflowError."
+      - "Fixed size per thread (-Xss) - deep recursion throws StackOverflowError."
 
   engine:
     name: Execution engine
@@ -71,6 +71,6 @@ concepts:
     fields:
       - { key: jit, label: jit }
     details:
-      - "The interpreter executes bytecode instruction by instruction — portable, quick to start."
+      - "The interpreter executes bytecode instruction by instruction - portable, quick to start."
       - "Profiling counters find hot methods and loops; the JIT (C1/C2 tiers) compiles them."
       - "Compiled code keeps deoptimizing guards so speculative optimizations stay correct."

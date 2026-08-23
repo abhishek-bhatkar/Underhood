@@ -27,9 +27,9 @@ nodes:
     position: { x: 600, y: 10 }
     size: { w: 270, h: 180 }
     key: entries
-    emptyLabel: "no bytecode yet — compile first"
+    emptyLabel: "no bytecode yet - compile first"
     itemTemplate: "$value.label"
-    absentLabel: "no bytecode yet — compile first"
+    absentLabel: "no bytecode yet - compile first"
     handles:
       - { id: in, type: target, pos: left }
       - { id: out, type: source, pos: bottom }
@@ -81,7 +81,7 @@ nodes:
     position: { x: 720, y: 50 }
     size: { w: 220, h: 160 }
     key: classes
-    emptyLabel: "empty — classes load on demand"
+    emptyLabel: "empty - classes load on demand"
     itemTemplate: "$value.label"
     absentLabel: "allocated at JVM startup"
     handles:
@@ -107,7 +107,7 @@ nodes:
     position: { x: 970, y: 50 }
     size: { w: 170, h: 360 }
     key: frames
-    emptyLabel: "— no frames —"
+    emptyLabel: "- no frames -"
     itemTemplate: "$value.label"
     absentLabel: "allocated at JVM startup"
     handles:

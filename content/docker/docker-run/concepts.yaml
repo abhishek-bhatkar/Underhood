@@ -5,7 +5,7 @@ concepts:
     fields:
       - { key: command, label: command }
     details:
-      - "Your shell is just the messenger — it runs the docker binary and shows its output."
+      - "Your shell is just the messenger - it runs the docker binary and shows its output."
       - "The docker CLI exits after the API call; the container keeps running without it."
       - "In this simulation the terminal doubles as the event log, like real docker output."
 
@@ -25,7 +25,7 @@ concepts:
       - "Exposes the REST API that every Docker client talks to."
       - "Owns /var/lib/docker: content store for layers, container metadata, volumes, networks."
       - "Orchestrates the real Linux machinery: overlayfs, namespaces, cgroups, veth pairs, iptables."
-      - "Supervises containers after start — log capture, restart policies, events."
+      - "Supervises containers after start - log capture, restart policies, events."
 
   registry:
     name: Registry (Docker Hub)
@@ -60,6 +60,6 @@ concepts:
     details:
       - "Image layers stay read-only; every container adds its own thin writable layer (overlayfs)."
       - "Isolation = namespaces (PID, mount, network, UTS, IPC) + cgroups for resource limits."
-      - "Not a VM: no guest kernel — container processes run directly on the host kernel."
+      - "Not a VM: no guest kernel - container processes run directly on the host kernel."
       - "The process you start becomes PID 1 inside the container's PID namespace."
       - "Lifecycle: created -> running -> paused/stopped -> removed."

@@ -1,7 +1,7 @@
 concepts:
   terminal:
     name: Terminal (client)
-    summary: "Your application's edge — here a CLI producing one record."
+    summary: "Your application's edge - here a CLI producing one record."
     fields:
       - { key: command, label: command }
     details:
@@ -15,7 +15,7 @@ concepts:
       - { key: key, label: key }
       - { key: acks, label: acks }
     details:
-      - "Keys hash to a partition — same key, same partition, per-key order."
+      - "Keys hash to a partition - same key, same partition, per-key order."
       - "acks=0/1/all trade latency vs durability; all waits for the full ISR."
       - "Retries + idempotence prevent duplicates when a broker dies mid-ack."
 
@@ -37,7 +37,7 @@ concepts:
     details:
       - "A leader accepts appends and serves fetches for its partition."
       - "The high watermark is the highest offset visible to consumers."
-      - "Brokers are homogeneous — any broker can lead any partition."
+      - "Brokers are homogeneous - any broker can lead any partition."
 
   broker-2:
     name: Broker 2
@@ -48,7 +48,7 @@ concepts:
     details:
       - "Followers fetch from the leader and maintain an identical log."
       - "In-sync replicas (ISR) are eligible for leadership."
-      - "Failover promotes an ISR follower — order and data continue."
+      - "Failover promotes an ISR follower - order and data continue."
 
   broker-3:
     name: Broker 3
@@ -69,7 +69,7 @@ concepts:
     details:
       - "Each partition is assigned to exactly one consumer in the group."
       - "Groups are independent: every group reads the whole topic."
-      - "Members joining/leaving trigger a rebalance — a reassignment of partitions."
+      - "Members joining/leaving trigger a rebalance - a reassignment of partitions."
 
   offsets:
     name: Committed offsets
@@ -78,5 +78,5 @@ concepts:
       - { key: committed, label: commits, list: true }
     details:
       - "A commit records the next offset to read per partition."
-      - "Crash recovery resumes from the last commit — at-least-once by default."
+      - "Crash recovery resumes from the last commit - at-least-once by default."
       - "The offsets topic is itself replicated like any other topic."

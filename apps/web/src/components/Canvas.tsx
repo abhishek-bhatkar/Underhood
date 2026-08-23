@@ -37,7 +37,7 @@ interface CanvasProps {
 
 /**
  * Generic graph renderer: node positions, kinds, and edges all come from the
- * experience's visuals.yaml — no topic-specific code lives here.
+ * experience's visuals.yaml - no topic-specific code lives here.
  */
 export function Canvas({ visuals, state, currentEvent, selected, onSelect }: CanvasProps) {
   const nodes = useMemo<Node<SimNodeData>[]>(

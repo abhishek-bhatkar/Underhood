@@ -20,8 +20,8 @@ scenarios:
         explanation:
           title: "You run: ./hello"
           body: >-
-            bash forks and execs your program. It lands in user space —
-            ring 3 on x86-64 — where it can only touch its own memory.
+            bash forks and execs your program. It lands in user space -
+            ring 3 on x86-64 - where it can only touch its own memory.
             Everything else (files, network, the screen) requires asking
             the kernel.
           concept: "User space is a sandbox: your code runs unprivileged, by design."
@@ -56,7 +56,7 @@ scenarios:
             printf is plain user-space code in libc. It formats into a
             stdio buffer and, when the buffer fills or the stream ends,
             calls the real kernel interface: write(1, buf, 6).
-          concept: "Library functions are user-space convenience — only the syscall crosses the boundary."
+          concept: "Library functions are user-space convenience - only the syscall crosses the boundary."
         effects:
           - op: status
             component: libc
@@ -79,7 +79,7 @@ scenarios:
           body: >-
             libc puts 1 (SYS_write) in rax, the args in registers, and
             executes the syscall instruction. The CPU switches to kernel
-            mode and jumps to a fixed entry point — user code chose the
+            mode and jumps to a fixed entry point - user code chose the
             door, but only the kernel decides what's behind it.
           concept: "The boundary is hardware-enforced: syscalls are the only doors into the kernel."
         effects:
@@ -103,10 +103,10 @@ scenarios:
           title: "fd 1 resolves through the VFS"
           body: >-
             The kernel's sys_write looks up file descriptor 1 in this
-            process's file table — an open description pointing at the
-            terminal — and hands the request to the virtual filesystem,
+            process's file table - an open description pointing at the
+            terminal - and hands the request to the virtual filesystem,
             which dispatches to the right driver.
-          concept: "A file descriptor is just a table index — the kernel dereferences it, user space can't."
+          concept: "A file descriptor is just a table index - the kernel dereferences it, user space can't."
         effects:
           - op: status
             component: vfs
@@ -126,11 +126,11 @@ scenarios:
         explanation:
           title: "copy_from_user: 6 bytes"
           body: >-
-            The kernel cannot trust the user pointer — it copies the six
+            The kernel cannot trust the user pointer - it copies the six
             bytes into kernel memory first, page by page, faulting in any
             pages that aren't resident. Only then is the data safe to act
             on.
-          concept: "The kernel validates and copies everything user space hands it — trust ends at the boundary."
+          concept: "The kernel validates and copies everything user space hands it - trust ends at the boundary."
         effects:
           - op: status
             component: page-cache
@@ -151,7 +151,7 @@ scenarios:
             The tty driver writes "hello" to the console. For a file
             instead, the data would sit in the page cache as dirty pages,
             written back to disk later.
-          concept: "Writes to files are usually 'done' before they touch disk — the page cache absorbs them."
+          concept: "Writes to files are usually 'done' before they touch disk - the page cache absorbs them."
         effects:
           - op: status
             component: tty
@@ -191,10 +191,10 @@ scenarios:
         explanation:
           title: "Return to user space: 6"
           body: >-
-            sys_write returns 6 — the count written — via the return
+            sys_write returns 6 - the count written - via the return
             register, and the kernel executes sysret: back to ring 3,
             exactly where the process left off.
-          concept: "Syscall returns land at the instruction after the trap — as if nothing happened, except something did."
+          concept: "Syscall returns land at the instruction after the trap - as if nothing happened, except something did."
         effects:
           - op: set
             component: cpu
@@ -215,8 +215,8 @@ scenarios:
         explanation:
           title: "Program continues, then exits"
           body: >-
-            printf returns to main, main returns, exit() — another syscall
-            — tears the process down. Every one of those steps crossed the
+            printf returns to main, main returns, exit() - another syscall
+            - tears the process down. Every one of those steps crossed the
             same boundary you just watched.
           concept: "A process spends its life alternating between user computation and kernel service."
         effects:
@@ -263,7 +263,7 @@ scenarios:
           title: "You run: ./reader /etc/shadow"
           body: >-
             Your program tries to open the shadow password file, which is
-            readable only by root. Watch where the kernel says no — and
+            readable only by root. Watch where the kernel says no - and
             how it reports it.
           concept: "Failure scenarios cross the same boundary; the answer just comes back negative."
         effects:
@@ -295,7 +295,7 @@ scenarios:
           title: "fopen → open(\"/etc/shadow\", O_RDONLY)"
           body: >-
             stdio's fopen wraps the open syscall. Nothing has checked
-            permissions yet — the path is just a user-space string until
+            permissions yet - the path is just a user-space string until
             the kernel looks at it.
           concept: "Permissions are kernel data: user space can claim anything; only the kernel's answer counts."
         effects:
@@ -317,7 +317,7 @@ scenarios:
           body: >-
             Same door as always: syscall instruction, ring 0, fixed entry
             point. The kernel begins resolving the path.
-          concept: "The boundary doesn't judge — the logic behind it does."
+          concept: "The boundary doesn't judge - the logic behind it does."
         effects:
           - op: status
             component: boundary
@@ -342,7 +342,7 @@ scenarios:
             then compares the file's mode bits and owning uid against the
             process's credentials. Your uid is not root, and the mode says
             root-only.
-          concept: "The check uses the caller's credentials — setuid binaries are the exception, not the rule."
+          concept: "The check uses the caller's credentials - setuid binaries are the exception, not the rule."
         effects:
           - op: status
             component: vfs
@@ -361,7 +361,7 @@ scenarios:
           title: "-EACCES: the open is refused"
           body: >-
             No file descriptor is created. The kernel returns the negative
-            errno EACCES — a refusal, not a crash. The system call
+            errno EACCES - a refusal, not a crash. The system call
             contract makes failures ordinary return values.
           concept: "Errors are values: the kernel refuses politely and lets user space decide what to do."
         effects:
@@ -382,7 +382,7 @@ scenarios:
           title: "Back in user space: errno = EACCES"
           body: >-
             The syscall returns -1 and libc records errno. fopen yields
-            NULL. Your program hasn't died — it's standing at the same
+            NULL. Your program hasn't died - it's standing at the same
             instruction after the trap, holding an error.
           concept: "errno is the kernel's refusal, remembered in user space."
         effects:
@@ -409,8 +409,8 @@ scenarios:
           title: "perror: Permission denied"
           body: >-
             The program checks fopen's NULL, calls perror, and exits with
-            status 1. The failure traveled the full round trip — request,
-            refusal, error code, handling — without anything crashing.
+            status 1. The failure traveled the full round trip - request,
+            refusal, error code, handling - without anything crashing.
           concept: "Well-behaved programs treat syscall failure as control flow, not catastrophe."
         effects:
           - op: status

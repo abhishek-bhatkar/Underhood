@@ -15,7 +15,7 @@ concepts:
     summary: "Turns hostnames into IP addresses via a delegated hierarchy."
     details:
       - "Stub resolver -> recursive resolver -> root -> TLD -> authoritative."
-      - "Answers are cached with TTLs — at every level."
+      - "Answers are cached with TTLs - at every level."
       - "NXDOMAIN is an authoritative 'no', not an error reaching DNS."
 
   tcp:
@@ -25,7 +25,7 @@ concepts:
       - { key: state, label: state }
     details:
       - "Three-way handshake (SYN, SYN-ACK, ACK) synchronizes sequence numbers."
-      - "Retransmission and ordering live here — layers above assume them."
+      - "Retransmission and ordering live here - layers above assume them."
       - "Connections are endpoint state in both kernels."
 
   tls:
@@ -42,7 +42,7 @@ concepts:
     name: Routers
     summary: "Hop-by-hop forwarders of IP packets."
     details:
-      - "Forward by destination IP using routing tables — no connection state."
+      - "Forward by destination IP using routing tables - no connection state."
       - "Can read IP/TCP headers but not TLS payload."
       - "Packets of one request may take different paths."
 
@@ -54,4 +54,4 @@ concepts:
     details:
       - "Accepts TCP connections and completes the TLS handshake with its key."
       - "Application logic decides the response; HTTP describes it."
-      - "One server, many connections — each independent."
+      - "One server, many connections - each independent."

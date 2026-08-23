@@ -35,7 +35,7 @@ nodes:
     position: { x: 30, y: 280 }
     size: { w: 240, h: 130 }
     key: keys
-    emptyLabel: "empty — no objects yet"
+    emptyLabel: "empty - no objects yet"
     itemTemplate: "$value.label"
     handles:
       - { id: in, type: target, pos: top }
@@ -96,7 +96,7 @@ nodes:
     key: replicas
     emptyLabel: "no pods yet"
     itemTemplate: "$value.label"
-    absentLabel: "no pods — apply a Deployment"
+    absentLabel: "no pods - apply a Deployment"
     chips:
       - { key: ready, text: "$value / 3 ready", variant: on }
     handles:

@@ -1,4 +1,4 @@
-# Visual layout for the docker-run experience — consumed by the generic canvas.
+# Visual layout for the docker-run experience - consumed by the generic canvas.
 # kinds: terminal | panel | stack | list | group
 nodes:
   - id: terminal
@@ -59,7 +59,7 @@ nodes:
     size: { w: 310, h: 320 }
     key: layers
     slots: 4
-    emptyLabel: "layer $index — empty"
+    emptyLabel: "layer $index - empty"
     itemTemplate: "$value.name"
     subTemplate: "$value.digest"
     handles:

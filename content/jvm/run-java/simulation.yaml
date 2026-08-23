@@ -1,4 +1,4 @@
-# What happens when you run a Java program — event sequences as data.
+# What happens when you run a Java program - event sequences as data.
 scenarios:
   - id: run
     name: Run program
@@ -26,7 +26,7 @@ scenarios:
           title: "You run: javac Hello.java"
           body: >-
             Compilation happens ahead of time, before any JVM exists. javac
-            reads Hello.java, type-checks it, and emits JVM bytecode — an
+            reads Hello.java, type-checks it, and emits JVM bytecode - an
             intermediate instruction set, not the machine code of your laptop.
           concept: "Source vs bytecode: Java compiles once to portable bytecode; the JVM interprets and compiles it at run time."
         effects:
@@ -57,7 +57,7 @@ scenarios:
             The compiler emits a class file: a compact, structured format of
             bytecode instructions, a constant pool, and metadata. The same
             file would run unchanged on a JVM for Linux, macOS, or anything
-            else — portability is the point of the split.
+            else - portability is the point of the split.
           concept: "Write once, run anywhere: the .class file targets the JVM spec, not a CPU."
         effects:
           - op: status
@@ -66,7 +66,7 @@ scenarios:
           - op: push
             component: classfile
             key: entries
-            value: { label: "Hello.class — JVM bytecode", variant: head }
+            value: { label: "Hello.class - JVM bytecode", variant: head }
           - op: push
             component: classfile
             key: entries
@@ -93,7 +93,7 @@ scenarios:
         explanation:
           title: "You run: java Hello"
           body: >-
-            The java launcher creates a JVM instance — a native process on
+            The java launcher creates a JVM instance - a native process on
             your machine. It sets up the runtime data areas and hands the
             class name to the classloader subsystem. This is the moment the
             "virtual machine" actually exists.
@@ -121,7 +121,7 @@ scenarios:
             The JVM allocates its runtime data areas: the method area for
             per-class structures, the heap for objects, and one stack per
             thread. Method area and heap are shared; each thread's stack is
-            its own. (We show one thread — main.)
+            its own. (We show one thread - main.)
           concept: "Runtime areas: method area and heap are shared by all threads; each thread has its own stack."
         effects:
           - op: status
@@ -146,7 +146,7 @@ scenarios:
             component: engine
             text: runtime areas up
           - op: log
-            text: "JVM started — method area, heap, thread stacks allocated"
+            text: "JVM started - method area, heap, thread stacks allocated"
 
       - type: LOAD_REQUESTED
         source: engine
@@ -157,10 +157,10 @@ scenarios:
         explanation:
           title: "The engine needs class: Hello"
           body: >-
-            Classes load lazily — on first actual use, not at startup. The
+            Classes load lazily - on first actual use, not at startup. The
             execution engine asks the application classloader for Hello,
             the class your own code named on the command line.
-          concept: "Lazy loading: a class is loaded when first needed — references alone don't trigger it."
+          concept: "Lazy loading: a class is loaded when first needed - references alone don't trigger it."
         effects:
           - op: status
             component: classloader
@@ -182,7 +182,7 @@ scenarios:
             its parent (platform), which asks its parent (bootstrap). Parents
             get first pick, so core classes like java.lang.String can never
             be spoofed by classpath look-alikes.
-          concept: "Parent delegation: classloaders ask their parents first — a security property, not just an order."
+          concept: "Parent delegation: classloaders ask their parents first - a security property, not just an order."
         effects:
           - op: label
             component: classloader
@@ -200,7 +200,7 @@ scenarios:
           title: "Hello.class bytes read from the classpath"
           body: >-
             No parent could define Hello, so the application classloader
-            reads Hello.class from the classpath into memory, as raw bytes —
+            reads Hello.class from the classpath into memory, as raw bytes -
             nothing is a class yet.
           concept: "The classpath is just a search path: directories and jars the application classloader scans."
         effects:
@@ -229,20 +229,20 @@ scenarios:
             method area. The bootstrap loader has already defined the core
             classes this program touches; now Hello joins them. From here
             on, "Hello" means this exact structure.
-          concept: "One class, one classloader: the method area entry — not the file — is the class at run time."
+          concept: "One class, one classloader: the method area entry - not the file - is the class at run time."
         effects:
           - op: push
             component: method-area
             key: classes
-            value: { label: "java.lang.Object — bootstrap" }
+            value: { label: "java.lang.Object - bootstrap" }
           - op: push
             component: method-area
             key: classes
-            value: { label: "java.lang.String — bootstrap" }
+            value: { label: "java.lang.String - bootstrap" }
           - op: push
             component: method-area
             key: classes
-            value: { label: "Hello — application" }
+            value: { label: "Hello - application" }
           - op: label
             component: classloader
             text: defining classes
@@ -279,7 +279,7 @@ scenarios:
             now runs the static initializers and <clinit> exactly once,
             right before main can touch the class. Superclasses initialize
             first.
-          concept: "Loading, linking, initialization are distinct phases — initialization is lazy and happens once."
+          concept: "Loading, linking, initialization are distinct phases - initialization is lazy and happens once."
         effects:
           - op: label
             component: method-area
@@ -303,10 +303,10 @@ scenarios:
           title: "main thread starts: frame pushed"
           body: >-
             The JVM creates the main thread and invokes main. The call
-            pushes a frame onto the thread's stack — local variables, an
+            pushes a frame onto the thread's stack - local variables, an
             operand stack for intermediate values, and a return slot.
             Executing a method is manipulating its frame.
-          concept: "A frame is a method call: locals, operand stack, return address — pushed on invoke, popped on return."
+          concept: "A frame is a method call: locals, operand stack, return address - pushed on invoke, popped on return."
         effects:
           - op: push
             component: stack
@@ -327,7 +327,7 @@ scenarios:
         explanation:
           title: "compute() invoked: another frame"
           body: >-
-            main calls compute(5). A second frame goes on top of main's —
+            main calls compute(5). A second frame goes on top of main's -
             the interpreter now executes compute's bytecode, using compute's
             locals and operand stack. main is suspended below, waiting.
           concept: "Call = push: nested calls stack frames; only the top frame runs."
@@ -355,7 +355,7 @@ scenarios:
             the allocator bumps a pointer in the young generation and the
             object's fields start zeroed. The reference to it lives in the
             frame's local slot; the object itself never touches the stack.
-          concept: "References on the stack, objects on the heap — the two areas meet at every field access."
+          concept: "References on the stack, objects on the heap - the two areas meet at every field access."
         effects:
           - op: push
             component: heap
@@ -375,7 +375,7 @@ scenarios:
           title: "compute() returned: frame popped"
           body: >-
             compute finishes: its return value goes into main's operand
-            stack and its frame is popped — locals gone, that memory reused
+            stack and its frame is popped - locals gone, that memory reused
             by the next call. Objects it allocated survive on the heap as
             long as they're reachable.
           concept: "Return = pop: a frame's locals die with it; heap objects live while reachable."
@@ -398,7 +398,7 @@ scenarios:
           body: >-
             Every method and backward branch increments a counter. compute
             crosses the threshold, so the JVM stops interpreting it
-            instruction-by-instruction and queues it for compilation — the
+            instruction-by-instruction and queues it for compilation - the
             interpreted "cold" path kept startup fast until now.
           concept: "Profile-guided: the JVM counts executions to decide what's worth compiling."
         effects:
@@ -416,7 +416,7 @@ scenarios:
           title: "JIT: compute() compiled to native code"
           body: >-
             The JIT compiler translates compute's bytecode into optimized
-            native machine code — tiered, first quickly with C1, later
+            native machine code - tiered, first quickly with C1, later
             aggressively with C2 using profiling data (inlining, loop
             optimizations). From now on calls jump straight to that code.
             (We collapse tiering into one step here.)
@@ -436,13 +436,13 @@ scenarios:
         target: terminal
         duration: 800
         explanation:
-          title: "main() returned — program exits"
+          title: "main() returned - program exits"
           body: >-
             main's frame pops, no non-daemon threads remain, and the JVM
             tears down its runtime areas and exits with code 0. The class
-            files, the heap, the frames — all of it lived inside that one
+            files, the heap, the frames - all of it lived inside that one
             native process.
-          concept: "The JVM exits when the last non-daemon thread dies — usually main returning."
+          concept: "The JVM exits when the last non-daemon thread dies - usually main returning."
         effects:
           - op: pop
             component: stack
@@ -466,7 +466,7 @@ scenarios:
             component: heap
             status: done
           - op: log
-            text: "main() returned — program exited (code 0)"
+            text: "main() returned - program exited (code 0)"
 
   - id: stack-overflow
     name: Stack overflow
@@ -493,7 +493,7 @@ scenarios:
         explanation:
           title: "You run: javac Hello.java"
           body: >-
-            Same program as the happy path — but this time compute() calls
+            Same program as the happy path - but this time compute() calls
             itself with no base case.
           concept: "Failure scenario: unbounded recursion."
         effects:
@@ -519,7 +519,7 @@ scenarios:
         explanation:
           title: "javac writes Hello.class"
           body: >-
-            The compiler happily emits the recursive bytecode — recursion is
+            The compiler happily emits the recursive bytecode - recursion is
             perfectly legal Java. The failure will be a run-time resource
             limit, not a language error.
           concept: "The compiler checks types, not stack depth."
@@ -530,7 +530,7 @@ scenarios:
           - op: push
             component: classfile
             key: entries
-            value: { label: "Hello.class — JVM bytecode", variant: head }
+            value: { label: "Hello.class - JVM bytecode", variant: head }
           - op: push
             component: classfile
             key: entries
@@ -538,7 +538,7 @@ scenarios:
           - op: push
             component: classfile
             key: entries
-            value: { label: "method compute(int) — recursive" }
+            value: { label: "method compute(int) - recursive" }
           - op: label
             component: javac
             text: bytecode emitted
@@ -559,7 +559,7 @@ scenarios:
           body: >-
             A fresh JVM boots with a default stack size per thread
             (typically hundreds of KB, set by -Xss).
-          concept: "Each thread's stack has a fixed size — that limit is what recursion can hit."
+          concept: "Each thread's stack has a fixed size - that limit is what recursion can hit."
         effects:
           - op: set
             component: terminal
@@ -580,8 +580,8 @@ scenarios:
         explanation:
           title: "Runtime areas allocated"
           body: >-
-            Method area, heap, and the main thread's stack — bounded by the
-            -Xss setting — are ready.
+            Method area, heap, and the main thread's stack - bounded by the
+            -Xss setting - are ready.
           concept: "The stack is allocated up front, per thread."
         effects:
           - op: status
@@ -606,7 +606,7 @@ scenarios:
             component: engine
             text: runtime areas up
           - op: log
-            text: "JVM started — runtime areas allocated"
+            text: "JVM started - runtime areas allocated"
 
       - type: MAIN_INVOKED
         source: engine
@@ -615,9 +615,9 @@ scenarios:
         explanation:
           title: "main() starts"
           body: >-
-            main's frame is pushed and it calls compute(5) — which calls
+            main's frame is pushed and it calls compute(5) - which calls
             compute(4), which calls compute(3)…
-          concept: "Each call pushes a frame — recursion is no exception."
+          concept: "Each call pushes a frame - recursion is no exception."
         effects:
           - op: push
             component: stack
@@ -656,7 +656,7 @@ scenarios:
             component: stack
             text: "recursing… frames growing"
           - op: log
-            text: "compute() -> compute() -> compute() — frames pile up"
+            text: "compute() -> compute() -> compute() - frames pile up"
 
       - type: STACK_OVERFLOW
         source: stack
@@ -666,9 +666,9 @@ scenarios:
           title: "StackOverflowError"
           body: >-
             The next push doesn't fit in the thread's stack. The JVM throws
-            StackOverflowError — an Error, not an Exception — and unwinds
+            StackOverflowError - an Error, not an Exception - and unwinds
             the frames looking for a handler. There is none.
-          concept: "StackOverflowError means the thread's stack — a fixed allocation — is exhausted."
+          concept: "StackOverflowError means the thread's stack - a fixed allocation - is exhausted."
         effects:
           - op: status
             component: stack
@@ -694,7 +694,7 @@ scenarios:
           body: >-
             An uncaught error kills the main thread; with no non-daemon
             threads left, the JVM exits with code 1. Compare the timeline
-            with the happy path — same start, different ending.
+            with the happy path - same start, different ending.
           concept: "An uncaught throwable on the last thread terminates the JVM."
         effects:
           - op: status

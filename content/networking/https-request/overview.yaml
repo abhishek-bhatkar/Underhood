@@ -2,8 +2,8 @@ title: What happens when a browser requests https://example.com?
 summary: >-
   Before a single byte of the page moves, the browser resolves the name
   through DNS, opens a TCP connection with a three-way handshake, and
-  negotiates TLS keys. Only then does HTTP ask for the page — encrypted,
-  routed hop by hop — and the server answers. Watch each layer do its one
+  negotiates TLS keys. Only then does HTTP ask for the page - encrypted,
+  routed hop by hop - and the server answers. Watch each layer do its one
   job.
 abstraction: >-
   Simplified teaching model: one recursive DNS resolution, TLS 1.3
