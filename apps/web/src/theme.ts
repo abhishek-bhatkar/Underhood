@@ -24,7 +24,7 @@ export function applyTheme(theme: Theme): void {
   document.documentElement.dataset.theme = theme;
   document
     .querySelector('meta[name="theme-color"]')
-    ?.setAttribute('content', theme === 'light' ? '#eef2f8' : '#0b1220');
+    ?.setAttribute('content', theme === 'light' ? '#f5efe6' : '#17120e');
   try {
     window.localStorage.setItem(STORAGE_KEY, theme);
   } catch {

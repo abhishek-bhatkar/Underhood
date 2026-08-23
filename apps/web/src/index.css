@@ -1,60 +1,60 @@
-/* ── Underhood: machine-room blueprint ─────────────────────────────── */
-/* Palette: blue-slate console, semantic status colors.                 */
-/* idle = slate · active work = amber · settled/running = green         */
-/* Dark is the canonical look; light is the blueprint-paper variant.    */
+/* ── Underhood: amber CRT machine room ─────────────────────────────── */
+/* Warm charcoal console, amber phosphor hero, semantic status colors.  */
+/* idle = slate · active work = hot amber · settled/running = green     */
+/* Dark is the canonical look; light is the aged-paper variant.         */
 
 :root,
 :root[data-theme='dark'] {
-  --bg-deep: #0b1220;
-  --bg-canvas: #0d1526;
-  --bg-panel: #101a2e;
-  --bg-node: #131f38;
-  --bg-inset: #0e1830;
-  --ink: #dce6f5;
-  --ink-dim: #8fa1bd;
-  --ink-faint: #5a6b87;
-  --line: #223350;
-  --line-soft: #1a2942;
-  --accent: #4da6ff; /* structural blue: links, focus, rails */
-  --on-accent: #07111f;
-  --work: #ffb454;   /* amber: in-flight work, writable layer */
-  --live: #3fd68f;   /* green: done, running */
-  --danger: #ff6b6b;
-  --grid-dot: #1c2b47;
-  --node-shadow: 0 8px 24px rgba(7, 17, 40, 0.55);
-  --card-shadow: 0 12px 32px rgba(6, 16, 38, 0.55);
-  --term-bg: #060b16;
-  --term-ink: #dce6f5;
-  --term-dim: #8fa1bd;
-  --term-accent: #ffb454;
+  --bg-deep: #17120e;
+  --bg-canvas: #1b1511;
+  --bg-panel: #201914;
+  --bg-node: #251d17;
+  --bg-inset: #1a1410;
+  --ink: #f2e8dc;
+  --ink-dim: #b8a898;
+  --ink-faint: #998570;
+  --line: #3d332b;
+  --line-soft: #2e2620;
+  --accent: #f0a03c; /* amber phosphor: links, focus, rails */
+  --on-accent: #1a1208;
+  --work: #ffc46b;   /* hot amber: in-flight work, writable layer */
+  --live: #8fce87;   /* green: done, running */
+  --danger: #ff7a6b;
+  --grid-dot: #3a2f26;
+  --node-shadow: 0 8px 24px rgba(24, 15, 8, 0.6);
+  --card-shadow: 0 12px 32px rgba(20, 13, 7, 0.6);
+  --term-bg: #100c09;
+  --term-ink: #f2e8dc;
+  --term-dim: #a89781;
+  --term-accent: #ffc46b;
   --font-sans: 'IBM Plex Sans', -apple-system, 'Segoe UI', sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 :root[data-theme='light'] {
-  --bg-deep: #eef2f8;
-  --bg-canvas: #e7edf6;
-  --bg-panel: #f7fafd;
-  --bg-node: #fdfefe;
-  --bg-inset: #edf1f8;
-  --ink: #16233a;
-  --ink-dim: #46586f;
-  --ink-faint: #566d89;
-  --line: #c6d2e3;
-  --line-soft: #dbe3ef;
-  --accent: #1c6dd0; /* darker blue for AA text contrast on paper */
+  --bg-deep: #f5efe6;
+  --bg-canvas: #efe7db;
+  --bg-panel: #faf6ef;
+  --bg-node: #fdfaf4;
+  --bg-inset: #f0e9de;
+  --ink: #2d2318;
+  --ink-dim: #5d4e3d;
+  --ink-faint: #6f5f4c;
+  --line: #d9cdba;
+  --line-soft: #e6ddcf;
+  --accent: #b45309; /* burnt amber, AA on paper */
   --on-accent: #ffffff;
-  --work: #a35404;   /* burnt amber, readable on light surfaces */
-  --live: #0d7a4d;
-  --danger: #c92a2a;
-  --grid-dot: #b7c6dc;
-  --node-shadow: 0 8px 24px rgba(23, 43, 82, 0.12);
-  --card-shadow: 0 12px 32px rgba(23, 43, 82, 0.14);
-  /* terminal stays dark in both modes - it is a terminal */
-  --term-bg: #0b1220;
-  --term-ink: #dce6f5;
-  --term-dim: #8fa1bd;
-  --term-accent: #ffb454;
+  --work: #9a5b00;   /* readable hot-amber counterpart on paper */
+  --live: #4d7c0f;
+  --danger: #b3261e;
+  --grid-dot: #d8ccb9;
+  --node-shadow: 0 8px 24px rgba(66, 50, 30, 0.14);
+  --card-shadow: 0 12px 32px rgba(66, 50, 30, 0.16);
+  /* terminal stays dark in both modes - it is the CRT */
+  --term-bg: #17120e;
+  --term-ink: #f2e8dc;
+  --term-dim: #a89781;
+  --term-accent: #ffc46b;
 }
 
 * { box-sizing: border-box; }
