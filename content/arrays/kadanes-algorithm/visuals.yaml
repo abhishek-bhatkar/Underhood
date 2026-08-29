@@ -1,0 +1,26 @@
+nodes:
+  - id: array
+    kind: array
+    label: Input array
+    position: { x: 0, y: 0 }
+    size: { w: 820, h: 230 }
+    key: cells
+    itemTemplate: "$value"
+    rangeKeys: [bestStart, bestEnd]
+    pointerKey: index
+    handles: [{ id: out, type: source, pos: right }]
+  - id: candidate
+    kind: panel
+    label: Candidate
+    position: { x: 0, y: 300 }
+    size: { w: 390, h: 190 }
+    lines: ["current sum", "start · end", "values"]
+  - id: complexity
+    kind: panel
+    label: Complexity
+    position: { x: 450, y: 300 }
+    size: { w: 370, h: 190 }
+    lines: ["time · O(n)", "extra space · O(1)", "non-empty maximum"]
+edges:
+  - { source: array, from: out, target: candidate, to: in }
+  - { source: array, from: out, target: complexity, to: in }

@@ -1,0 +1,25 @@
+nodes:
+  - id: array
+    kind: array
+    label: Sorted array
+    position: { x: 0, y: 0 }
+    size: { w: 820, h: 230 }
+    key: cells
+    itemTemplate: "$value"
+    pointerKeys: [left, right]
+    handles: [{ id: out, type: source, pos: right }]
+  - id: operation
+    kind: panel
+    label: Pair check
+    position: { x: 0, y: 300 }
+    size: { w: 390, h: 180 }
+    lines: ["left · right", "target · sum", "result"]
+  - id: complexity
+    kind: panel
+    label: Complexity
+    position: { x: 450, y: 300 }
+    size: { w: 370, h: 180 }
+    lines: ["time · O(n)", "extra space · O(1)"]
+edges:
+  - { source: array, from: out, target: operation, to: in }
+  - { source: array, from: out, target: complexity, to: in }

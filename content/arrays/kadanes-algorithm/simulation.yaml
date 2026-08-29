@@ -1,0 +1,66 @@
+scenarios:
+  - id: mixed
+    name: Find the mixed maximum
+    components: [{ id: array }, { id: candidate }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        explanation: { title: Start with the first value, body: The candidate begins as the first non-empty suffix. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: -2 }, { value: 1 }, { value: -3 }, { value: 4 }, { value: -1 }, { value: 2 }, { value: 1 }, { value: -5 }], index: 0, currentSum: -2, bestSum: -2, bestStart: 0, bestEnd: 1 } }
+          - { op: set, component: candidate, data: { values: [-2], sum: -2, start: 0, end: 1 } }
+          - { op: set, component: complexity, data: { time: O(n), space: O(1) } }
+      - type: CANDIDATE_UPDATE
+        payload: { index: 1, sum: 1 }
+        explanation: { title: Restart at 1, body: Extending the negative suffix is worse than starting with 1, so discard the losing prefix. }
+        effects:
+          - { op: set, component: array, data: { index: 1, currentSum: 1, bestSum: 1, bestStart: 1, bestEnd: 2 } }
+          - { op: set, component: candidate, data: { values: [1], sum: 1, start: 1, end: 2 } }
+      - type: CANDIDATE_UPDATE
+        payload: { index: 2, sum: -2 }
+        explanation: { title: Extend through -3, body: The suffix ending at index 2 has sum -2, so the prior winner remains better. }
+        effects: [{ op: set, component: array, data: { index: 2, currentSum: -2 } }, { op: set, component: candidate, data: { values: [1, -3], sum: -2, start: 1, end: 3 } }]
+      - type: CANDIDATE_UPDATE
+        payload: { index: 3, sum: 4 }
+        explanation: { title: Restart at 4, body: A negative suffix cannot help the next subarray, so 4 becomes the new candidate and winner. }
+        effects: [{ op: set, component: array, data: { index: 3, currentSum: 4, bestSum: 4, bestStart: 3, bestEnd: 4 } }, { op: set, component: candidate, data: { values: [4], sum: 4, start: 3, end: 4 } }]
+      - type: CANDIDATE_UPDATE
+        payload: { index: 4, sum: 3 }
+        explanation: { title: Extend with -1, body: The candidate remains contiguous; its sum is now 3. }
+        effects: [{ op: set, component: array, data: { index: 4, currentSum: 3 } }, { op: set, component: candidate, data: { values: [4, -1], sum: 3, start: 3, end: 5 } }]
+      - type: CANDIDATE_UPDATE
+        payload: { index: 5, sum: 5 }
+        explanation: { title: Extend with 2, body: The current suffix improves to 5, which becomes the best total. }
+        effects: [{ op: set, component: array, data: { index: 5, currentSum: 5, bestSum: 5, bestStart: 3, bestEnd: 6 } }, { op: set, component: candidate, data: { values: [4, -1, 2], sum: 5, start: 3, end: 6 } }]
+      - type: CANDIDATE_UPDATE
+        payload: { index: 6, sum: 6 }
+        explanation: { title: Extend with 1, body: The final positive extension produces the mixed winner with sum 6. }
+        effects: [{ op: set, component: array, data: { index: 6, currentSum: 6, bestSum: 6, bestStart: 3, bestEnd: 6 } }, { op: set, component: candidate, data: { values: [4, -1, 2, 1], sum: 6, start: 3, end: 6 } }]
+      - type: CANDIDATE_UPDATE
+        payload: { index: 7, sum: 1 }
+        explanation: { title: Ignore the losing tail, body: Adding -5 lowers the suffix, so the earlier winner remains unchanged. }
+        effects: [{ op: set, component: array, data: { index: 7, currentSum: 1 } }]
+      - type: MAXIMUM_COMPLETE
+        explanation: { title: Maximum subarray found, body: The contiguous values 4, -1, 2, 1 sum to 6., concept: A negative suffix is reset, but the global winner is never lost. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { currentSum: 1, bestSum: 6, bestStart: 3, bestEnd: 6 } }, { op: status, component: candidate, status: done }, { op: status, component: complexity, status: done }, { op: log, text: "maximum subarray: indexes 3..6, sum 6" }]
+  - id: all-negative
+    name: Choose the least negative value
+    components: [{ id: array }, { id: candidate }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        explanation: { title: Start with -5, body: The algorithm starts with a real element so the result must be non-empty. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: -5 }, { value: -2 }, { value: -1 }], index: 0, currentSum: -5, bestSum: -5, bestStart: 0, bestEnd: 1 } }
+          - { op: set, component: candidate, data: { values: [-5], sum: -5, start: 0, end: 1 } }
+          - { op: set, component: complexity, data: { time: O(n), space: O(1) } }
+      - type: CANDIDATE_UPDATE
+        explanation: { title: Prefer -2, body: Restarting at -2 beats extending -5 plus -2. }
+        effects: [{ op: set, component: array, data: { index: 1, currentSum: -2, bestSum: -2, bestStart: 1, bestEnd: 2 } }, { op: set, component: candidate, data: { values: [-2], sum: -2, start: 1, end: 2 } }]
+      - type: CANDIDATE_UPDATE
+        explanation: { title: Prefer -1, body: Restarting at -1 beats every earlier negative suffix. }
+        effects: [{ op: set, component: array, data: { index: 2, currentSum: -1, bestSum: -1, bestStart: 2, bestEnd: 3 } }, { op: set, component: candidate, data: { values: [-1], sum: -1, start: 2, end: 3 } }]
+      - type: CHECK_RESULT
+        explanation: { title: Preserve a non-empty result, body: The best value is still -1; Kadane never substitutes the empty subarray with zero. }
+        effects: [{ op: log, text: "all-negative check: maximum remains -1" }]
+      - type: MAXIMUM_COMPLETE
+        explanation: { title: Maximum is -1, body: The least negative singleton is the maximum non-empty subarray. }
+        effects: [{ op: status, component: array, status: done }, { op: status, component: candidate, status: done }, { op: status, component: complexity, status: done }, { op: log, text: "maximum subarray: index 2, sum -1" }]

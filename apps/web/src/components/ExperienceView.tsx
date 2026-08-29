@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import type { ExperienceDef } from '../content/registry';
+import { topics, type ExperienceDef } from '../content/registry';
 import { useSimulation } from '../simulation/useSimulation';
 import { Canvas } from './Canvas';
 import { ControlsBar } from './ControlsBar';
@@ -10,6 +10,18 @@ import { ThemeToggle } from './ThemeToggle';
 
 /** One experience: canvas + rail + transport, fully driven by content. */
 export function ExperienceView({ experience }: { experience: ExperienceDef }) {
+  const topic = topics[experience.topicId];
+  const topicExperiences = topic
+    ? Object.values(topic.experiences).sort((a, b) => {
+        const order = ['traversal', 'insert-delete', 'two-pointers', 'prefix-sum', 'kadanes-algorithm'];
+        const ai = order.indexOf(a.id);
+        const bi = order.indexOf(b.id);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1;
+        if (bi >= 0) return 1;
+        return a.id.localeCompare(b.id);
+      })
+    : [];
   const scenarioIds = Object.keys(experience.scenarios);
   const [scenarioId, setScenarioId] = useState(scenarioIds[0]);
   const [selected, setSelected] = useState<string | null>(null);
@@ -39,6 +51,21 @@ export function ExperienceView({ experience }: { experience: ExperienceDef }) {
           Underhood
         </a>
         <h1 className="app-title">{experience.overview.title}</h1>
+        {topicExperiences.length > 1 ? (
+          <nav className="topic-experience-links" aria-label={`${topic.name} experiences`}>
+            {topicExperiences.map((topicExperience) => (
+              <a
+                data-testid="topic-experience-link"
+                className="topic-experience-link"
+                href={`#/${topicExperience.topicId}/${topicExperience.id}`}
+                aria-current={topicExperience.id === experience.id ? 'page' : undefined}
+                key={topicExperience.id}
+              >
+                {topicExperience.overview.title}
+              </a>
+            ))}
+          </nav>
+        ) : null}
         <span className="spacer" />
         {scenarioIds.length > 1 ? (
           <div className="scenario-toggle" role="group" aria-label="Scenario">

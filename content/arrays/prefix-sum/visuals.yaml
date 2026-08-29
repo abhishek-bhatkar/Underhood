@@ -1,0 +1,35 @@
+nodes:
+  - id: array
+    kind: array
+    label: Input array
+    position: { x: 0, y: 0 }
+    size: { w: 820, h: 210 }
+    key: cells
+    itemTemplate: "$value"
+    rangeKeys: [left, right]
+    handles: [{ id: out, type: source, pos: right }]
+  - id: prefix
+    kind: array
+    label: Prefix sums
+    position: { x: 0, y: 260 }
+    size: { w: 820, h: 210 }
+    key: values
+    itemTemplate: "$value"
+    pointerKey: index
+    handles: [{ id: out, type: source, pos: right }]
+  - id: range
+    kind: panel
+    label: Range query
+    position: { x: 0, y: 520 }
+    size: { w: 390, h: 170 }
+    lines: ["left · right", "prefix[right + 1]", "sum"]
+  - id: complexity
+    kind: panel
+    label: Complexity
+    position: { x: 450, y: 520 }
+    size: { w: 370, h: 170 }
+    lines: ["build · O(n)", "query · O(1)", "space · O(n)"]
+edges:
+  - { source: array, from: out, target: prefix, to: in }
+  - { source: prefix, from: out, target: range, to: in }
+  - { source: prefix, from: out, target: complexity, to: in }

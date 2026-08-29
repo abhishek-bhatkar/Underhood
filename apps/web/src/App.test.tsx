@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, screen, fireEvent, cleanup } from '@testing-library/react';
 import App from './App';
+import { catalogTotals } from './components/Home';
 
 afterEach(() => {
   cleanup();
@@ -8,15 +9,50 @@ afterEach(() => {
 });
 
 describe('App routing', () => {
-  it('home lists topics with the hero', () => {
+  it('catalog totals include experiences from every registered topic', () => {
+    const experience = (events: number) =>
+      ({ scenarios: { primary: { events: Array.from({ length: events }) } } }) as never;
+
+    expect(catalogTotals([experience(2), experience(1)])).toEqual({
+      scenarios: 2,
+      events: 3,
+    });
+  });
+
+  it('home groups systems and algorithms catalog sections', () => {
     window.location.hash = '';
     render(<App />);
     expect(screen.getByText('docker')).toBeTruthy();
+    expect(screen.getByText('SYSTEMS')).toBeTruthy();
+    expect(screen.getByText('ALGORITHMS & DATA STRUCTURES')).toBeTruthy();
     expect(screen.getByText(/watch it work/i)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 1 }).textContent).toMatch(
       /Don't just read how it works/i,
     );
-    expect(screen.getAllByRole('heading', { level: 2 }).length).toBe(9);
+    expect(screen.getAllByRole('heading', { level: 2 }).length).toBe(10);
+  });
+
+  it('home exposes one Arrays topic card and preserves the nine Systems experiences', () => {
+    window.location.hash = '';
+    render(<App />);
+    expect(screen.getByRole('link', { name: /Arrays/i }).getAttribute('href')).toBe(
+      '#/arrays/traversal',
+    );
+    expect(screen.getAllByTestId('systems-experience-card')).toHaveLength(9);
+  });
+
+  it('Array experience header links navigate among all five Array experiences', () => {
+    window.location.hash = '#/arrays/traversal';
+    render(<App />);
+    const links = screen.getAllByTestId('topic-experience-link');
+    expect(links).toHaveLength(5);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '#/arrays/traversal',
+      '#/arrays/insert-delete',
+      '#/arrays/two-pointers',
+      '#/arrays/prefix-sum',
+      '#/arrays/kadanes-algorithm',
+    ]);
   });
 
   it('docker experience steps through events', () => {

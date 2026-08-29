@@ -27,7 +27,7 @@ export interface TopicDef {
 
 // Discover every content YAML at build time - adding a topic is a new
 // directory under content/, no code changes.
-const files = import.meta.glob('../../../../content/**\/*.yaml', {
+const files = import.meta.glob('../../../../content/**/*.yaml', {
   query: '?raw',
   import: 'default',
   eager: true,

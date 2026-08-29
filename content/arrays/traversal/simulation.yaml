@@ -1,0 +1,199 @@
+scenarios:
+  - id: complete
+    name: Traverse a complete array
+    components:
+      - id: array
+      - id: complexity
+    events:
+      - type: READ
+        source: array
+        duration: 700
+        payload: { index: 0, value: 10 }
+        explanation:
+          title: Read arr[0]
+          body: The index points at the first cell, so the traversal reads value 10.
+          concept: An array read combines a base address with an index to locate one cell directly.
+        effects:
+          - op: status
+            component: array
+            status: active
+          - op: set
+            component: array
+            data:
+              cells: [{ value: 10, state: read }, { value: 20 }, { value: 30 }, { value: 40 }, { value: 50 }]
+              index: "$payload.index"
+              value: "$payload.value"
+              operations: 1
+              reading: true
+          - op: set
+            component: complexity
+            data: { access: O(1), time: O(n), space: O(1) }
+      - type: READ
+        source: array
+        duration: 700
+        payload: { index: 1, value: 20 }
+        explanation:
+          title: Read arr[1]
+          body: The marker advances one position and reads the second cell, value 20.
+        effects:
+          - op: set
+            component: array
+            data:
+              cells: [{ value: 10, state: read }, { value: 20, state: read }, { value: 30 }, { value: 40 }, { value: 50 }]
+              index: "$payload.index"
+              value: "$payload.value"
+              operations: 2
+              reading: true
+      - type: READ
+        source: array
+        duration: 700
+        payload: { index: 2, value: 30 }
+        explanation:
+          title: Read arr[2]
+          body: The third indexed access returns value 30; three cells have now been read.
+        effects:
+          - op: set
+            component: array
+            data:
+              cells: [{ value: 10, state: read }, { value: 20, state: read }, { value: 30, state: read }, { value: 40 }, { value: 50 }]
+              index: "$payload.index"
+              value: "$payload.value"
+              operations: 3
+              reading: true
+      - type: READ
+        source: array
+        duration: 700
+        payload: { index: 3, value: 40 }
+        explanation:
+          title: Read arr[3]
+          body: The marker moves to index 3 and reads value 40 without shifting any cells.
+        effects:
+          - op: set
+            component: array
+            data:
+              cells: [{ value: 10, state: read }, { value: 20, state: read }, { value: 30, state: read }, { value: 40, state: read }, { value: 50 }]
+              index: "$payload.index"
+              value: "$payload.value"
+              operations: 4
+              reading: true
+      - type: READ
+        source: array
+        duration: 700
+        payload: { index: 4, value: 50 }
+        explanation:
+          title: Read arr[4]
+          body: The final cell is read at index 4, completing one read for every element.
+        effects:
+          - op: set
+            component: array
+            data:
+              cells: [{ value: 10, state: read }, { value: 20, state: read }, { value: 30, state: read }, { value: 40, state: read }, { value: 50, state: read }]
+              index: "$payload.index"
+              value: "$payload.value"
+              operations: 5
+              reading: true
+      - type: TRAVERSAL_COMPLETE
+        source: array
+        duration: 500
+        payload: { index: null, value: null }
+        explanation:
+          title: Traversal ends at index 5
+          body: The next index is one past the last valid cell, so the loop terminates cleanly.
+          concept: Traversal is O(n) time and O(1) extra space because it visits each cell once with one index.
+        effects:
+          - op: status
+            component: array
+            status: done
+          - op: set
+            component: array
+            data: { index: 5, value: null, operations: 5, reading: false }
+          - op: log
+            text: "traversal complete: 5 reads"
+
+  - id: empty
+    name: Traverse an empty array
+    components:
+      - id: array
+      - id: complexity
+    events:
+      - type: CHECK_LENGTH
+        source: array
+        duration: 400
+        payload: { length: 0 }
+        explanation:
+          title: Check array length
+          body: The traversal checks the input length before entering its read loop.
+        effects:
+          - op: status
+            component: array
+            status: active
+          - op: set
+            component: array
+            data: { cells: [], index: null, value: null, operations: 0, length: 0, reading: false }
+          - op: log
+            text: "length = $payload.length"
+      - type: EMPTY_ARRAY_GUARD
+        source: array
+        duration: 400
+        payload: { length: 0 }
+        explanation:
+          title: The guard sees length 0
+          body: Because length is zero, index 0 is not a valid cell and the loop body is skipped.
+        effects:
+          - op: set
+            component: array
+            data: { index: null, value: null, operations: 0, guarded: true, reading: false }
+          - op: log
+            text: "guard: length > 0 is false"
+      - type: SKIP_READ
+        source: array
+        duration: 400
+        payload: { index: null, value: null }
+        explanation:
+          title: No indexed read occurs
+          body: "The empty input takes a different path from a non-empty traversal: there is no arr[0] access."
+          concept: Checking the bound first prevents an invalid read and keeps the operation count at zero.
+        effects:
+          - op: set
+            component: array
+            data: { index: null, value: null, operations: 0, reading: false }
+          - op: log
+            text: "read loop skipped"
+      - type: TERMINATE
+        source: array
+        duration: 400
+        payload: { index: null, value: null }
+        explanation:
+          title: Empty traversal can terminate
+          body: Control exits without advancing the index or changing the array cells.
+        effects:
+          - op: set
+            component: array
+            data: { index: null, value: null, operations: 0, terminated: true, reading: false }
+          - op: log
+            text: "traversal terminated cleanly"
+      - type: EMPTY_ARRAY
+        source: array
+        duration: 500
+        payload: { index: null, value: null }
+        explanation:
+          title: "No read: the array is empty"
+          body: Its length is zero, so the traversal terminates before attempting arr[0].
+          concept: The empty case has zero operations and no invalid index state.
+        effects:
+          - op: status
+            component: array
+            status: done
+          - op: set
+            component: array
+            data:
+              cells: []
+              index: null
+              value: null
+              operations: 0
+              reading: false
+          - op: set
+            component: complexity
+            data: { access: O(1), time: O(n), space: O(1) }
+          - op: log
+            text: "empty array: 0 reads"

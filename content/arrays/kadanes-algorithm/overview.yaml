@@ -1,0 +1,3 @@
+title: How does Kadane's algorithm find the maximum subarray?
+summary: Extend the best suffix ending at each position, or restart at the current value when that suffix hurts the total.
+abstraction: This model returns the maximum non-empty contiguous subarray and keeps inclusive start and end indexes.

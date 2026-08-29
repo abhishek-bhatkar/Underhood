@@ -5,11 +5,23 @@ function experienceSteps(experience: ExperienceDef): number {
   return Object.values(experience.scenarios).reduce((sum, s) => sum + s.events.length, 0);
 }
 
+export function catalogTotals(experiences: ExperienceDef[]) {
+  return experiences.reduce(
+    (acc, experience) => {
+      acc.scenarios += Object.keys(experience.scenarios).length;
+      acc.events += experienceSteps(experience);
+      return acc;
+    },
+    { scenarios: 0, events: 0 },
+  );
+}
+
 function ExperienceCard({ experience, index }: { experience: ExperienceDef; index: number }) {
   const topic = topics[experience.topicId];
   return (
     <a
       className="home-card"
+      data-testid="systems-experience-card"
       style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
       href={`#/${experience.topicId}/${experience.id}`}
     >
@@ -26,18 +38,35 @@ function ExperienceCard({ experience, index }: { experience: ExperienceDef; inde
   );
 }
 
+function TopicCard({ topic, index }: { topic: (typeof topics)[string]; index: number }) {
+  const firstExperience = topic.experiences.traversal ?? Object.values(topic.experiences)[0];
+  if (!firstExperience) return null;
+
+  return (
+    <a
+      className="home-card"
+      style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+      href={`#/${topic.id}/${firstExperience.id}`}
+    >
+      <div className="home-card-tick" aria-hidden />
+      <h2 className="home-card-title">{topic.name}</h2>
+      <p className="home-card-summary">{topic.description}</p>
+      <p className="home-card-meta">
+        <span className="home-card-topic">topic</span>
+        <span className="home-card-arrow" aria-hidden>→</span>
+      </p>
+    </a>
+  );
+}
+
 /** Topic index: every experience discovered from content/. */
 export function Home() {
   const topicList = Object.values(topics);
-  const experiences = topicList.flatMap((topic) => Object.values(topic.experiences));
-  const totals = experiences.reduce(
-    (acc, experience) => {
-      acc.scenarios += Object.keys(experience.scenarios).length;
-      acc.events += experienceSteps(experience);
-      return acc;
-    },
-    { scenarios: 0, events: 0 },
-  );
+  const systemsTopics = topicList.filter((topic) => topic.id !== 'arrays');
+  const algorithmTopics = topicList.filter((topic) => topic.id === 'arrays');
+  const allExperiences = topicList.flatMap((topic) => Object.values(topic.experiences));
+  const experiences = systemsTopics.flatMap((topic) => Object.values(topic.experiences));
+  const totals = catalogTotals(allExperiences);
 
   return (
     <div className="home">
@@ -66,15 +95,24 @@ export function Home() {
           </p>
         </section>
         <section className="home-catalog" aria-label="All experiences">
-          <div className="home-grid">
-            {experiences.map((experience, i) => (
-              <ExperienceCard
-                key={`${experience.topicId}/${experience.id}`}
-                experience={experience}
-                index={i}
-              />
-            ))}
-          </div>
+          <section className="home-catalog-section" aria-labelledby="systems-heading">
+            <p className="home-catalog-label" id="systems-heading">SYSTEMS</p>
+            <div className="home-grid">
+              {experiences.map((experience, i) => (
+                <ExperienceCard key={`${experience.topicId}/${experience.id}`} experience={experience} index={i} />
+              ))}
+            </div>
+          </section>
+          <section className="home-catalog-section" aria-labelledby="algorithms-heading">
+            <p className="home-catalog-label" id="algorithms-heading">
+              ALGORITHMS &amp; DATA STRUCTURES
+            </p>
+            <div className="home-grid">
+              {algorithmTopics.map((topic, i) => (
+                <TopicCard key={topic.id} topic={topic} index={i} />
+              ))}
+            </div>
+          </section>
         </section>
         <footer className="home-footer">
           <p>
