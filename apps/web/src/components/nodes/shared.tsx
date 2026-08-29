@@ -31,6 +31,14 @@ export function itemText(template: string | undefined, item: unknown): string {
   });
 }
 
+/** Replace `$key` placeholders with live component data for declarative panel lines. */
+export function runtimeText(template: string, runtime: ComponentRuntime | undefined): string {
+  return template.replace(/\$(\w+)/g, (_, key: string) => {
+    const value = runtime?.data[key];
+    return value === undefined || value === null ? '-' : String(value);
+  });
+}
+
 /** Render declared chips for values present in the component's data. */
 export function Chips({
   chips,

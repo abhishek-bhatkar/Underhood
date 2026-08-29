@@ -126,8 +126,8 @@ export function deriveState(
     currentStep: -1,
     components: Object.fromEntries(
       initial.map((c) => [
-        c.id,
-        { id: c.id, status: c.initial ?? 'idle', data: {} } satisfies ComponentRuntime,
+      c.id,
+        { id: c.id, status: c.initial ?? 'idle', data: { ...(c.data ?? {}) } } satisfies ComponentRuntime,
       ]),
     ),
     log: [],

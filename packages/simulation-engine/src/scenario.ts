@@ -35,6 +35,7 @@ const effectSchema = z.discriminatedUnion('op', [
 const componentInitSchema = z.object({
   id: z.string().min(1),
   initial: componentStatusSchema.optional(),
+  data: z.record(z.unknown()).optional(),
 });
 
 const eventDefSchema = z.object({

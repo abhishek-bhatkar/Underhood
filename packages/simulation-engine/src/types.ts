@@ -46,6 +46,8 @@ export interface ComponentRuntime {
 export interface ComponentInit {
   id: string;
   initial?: ComponentStatus;
+  /** Declarative state visible before the first event is applied. */
+  data?: Record<string, unknown>;
 }
 
 export interface LogEntry {

@@ -83,12 +83,14 @@ describe('App routing', () => {
     window.location.hash = '';
     localStorage.removeItem('underhood-theme');
     render(<App />);
-    const lightButtons = screen.getAllByRole('button', { name: 'light' });
-    fireEvent.click(lightButtons[0]);
+    const switchToLight = screen.getByRole('button', { name: 'Switch to light theme' });
+    expect(switchToLight.querySelector('[aria-hidden="true"]')?.textContent).toBe('☀');
+    fireEvent.click(switchToLight);
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(localStorage.getItem('underhood-theme')).toBe('light');
-    const darkButtons = screen.getAllByRole('button', { name: 'dark' });
-    fireEvent.click(darkButtons[0]);
+    const switchToDark = screen.getByRole('button', { name: 'Switch to dark theme' });
+    expect(switchToDark.querySelector('[aria-hidden="true"]')?.textContent).toBe('☾');
+    fireEvent.click(switchToDark);
     expect(document.documentElement.dataset.theme).toBe('dark');
     expect(localStorage.getItem('underhood-theme')).toBe('dark');
   });
