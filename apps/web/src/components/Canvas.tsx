@@ -17,6 +17,7 @@ import { PanelNode } from './nodes/PanelNode';
 import { StackNode } from './nodes/StackNode';
 import { ListNode } from './nodes/ListNode';
 import { GroupNode } from './nodes/GroupNode';
+import { ArrayNode } from './nodes/ArrayNode';
 import type { SimNodeData } from './nodes/shared';
 
 const nodeTypes: NodeTypes = {
@@ -25,6 +26,7 @@ const nodeTypes: NodeTypes = {
   stack: StackNode,
   list: ListNode,
   group: GroupNode,
+  array: ArrayNode,
 };
 
 interface CanvasProps {

@@ -1,0 +1,278 @@
+scenarios:
+  - id: middle-insert
+    name: Insert 25 at index 2
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the array, body: The four existing values are ready for an insertion at index 2. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 2, shifts: 0, writes: 0, deletes: 0, operation: insert } }]
+      - type: SHIFT_RIGHT
+        source: array
+        duration: 700
+        payload: { from: 3, to: 4, value: 40 }
+        explanation: { title: Shift 40 right, body: Move the last value first so the insertion does not overwrite it., concept: Shift from the end toward the insertion index. }
+        effects:
+          - { op: status, component: array, status: active }
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }, { value: 40, state: moved }], index: 4, shifts: 1, writes: 0, deletes: 0, operation: insert, moving: true } }
+          - { op: set, component: operation, data: { from: 3, to: 4, value: 40, shifts: 1, writes: 0, deletes: 0 } }
+      - type: SHIFT_RIGHT
+        source: array
+        duration: 700
+        payload: { from: 2, to: 3, value: 30 }
+        explanation: { title: Shift 30 right, body: Move the value at index 2 into the newly opened position at index 3. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 30, state: moved }, { value: 40, state: moved }], index: 3, shifts: 2, writes: 0, deletes: 0, operation: insert, moving: true } }
+          - { op: set, component: operation, data: { from: 2, to: 3, value: 30, shifts: 2, writes: 0, deletes: 0 } }
+      - type: WRITE
+        source: array
+        duration: 700
+        payload: { index: 2, value: 25 }
+        explanation: { title: Write 25 at index 2, body: The target cell is free, so the inserted value can be written without losing 30. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 25, state: written }, { value: 30 }, { value: 40 }], index: 2, value: 25, shifts: 2, writes: 1, deletes: 0, operation: insert, moving: false } }
+          - { op: set, component: operation, data: { from: 2, to: 2, value: 25, shifts: 2, writes: 1, deletes: 0 } }
+          - { op: set, component: operation, data: { from: 2, to: 2, value: 25, shifts: 2, writes: 1, deletes: 0 } }
+      - type: INSERT_COMPLETE
+        source: array
+        duration: 500
+        payload: { index: 2, value: 25 }
+        explanation: { title: Insert complete, body: The array remains ordered with 25 at index 2., concept: Middle insertion used two shifts and one write. }
+        effects:
+          - { op: status, component: array, status: done }
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 25, state: written }, { value: 30 }, { value: 40 }], index: 2, value: 25, shifts: 2, writes: 1, deletes: 0, operation: insert, moving: false } }
+          - { op: set, component: complexity, data: { insert: O(n), delete: O(n), space: O(1) } }
+          - { op: status, component: complexity, status: done }
+          - { op: log, text: "inserted 25 at index 2 after 2 shifts" }
+  - id: middle-delete
+    name: Delete value 25 at index 2
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the array, body: The five existing values are ready to delete 25 at index 2. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 25 }, { value: 30 }, { value: 40 }], index: 2, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: SHIFT_LEFT
+        source: array
+        duration: 700
+        payload: { from: 3, to: 2, value: 30 }
+        explanation: { title: Move 30 left, body: Fill the deletion gap left by 25 while preserving order. }
+        effects:
+          - { op: status, component: array, status: active }
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30, state: moved }, { value: 30 }, { value: 40 }], index: 2, shifts: 1, writes: 0, deletes: 0, operation: delete, moving: true } }
+          - { op: set, component: operation, data: { from: 3, to: 2, value: 30, shifts: 1, writes: 0, deletes: 0 } }
+      - type: SHIFT_LEFT
+        source: array
+        duration: 700
+        payload: { from: 4, to: 3, value: 40 }
+        explanation: { title: Move 40 left, body: The final live value moves into the remaining gap. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30, state: moved }, { value: 40, state: moved }, { value: 40, state: stale }], index: 3, shifts: 2, writes: 0, deletes: 0, operation: delete, moving: true } }
+          - { op: set, component: operation, data: { from: 4, to: 3, value: 40, shifts: 2, writes: 0, deletes: 0 } }
+      - type: REMOVE_TAIL
+        source: array
+        duration: 700
+        payload: { index: 4, value: 40 }
+        explanation: { title: Remove stale tail, body: The duplicated tail cell is no longer part of the logical array. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 4, shifts: 2, writes: 0, deletes: 1, operation: delete, moving: false } }
+          - { op: set, component: operation, data: { from: 4, to: 4, value: 40, shifts: 2, writes: 0, deletes: 1 } }
+      - type: DELETE_COMPLETE
+        source: array
+        duration: 500
+        payload: { index: 2, value: 25 }
+        explanation: { title: Delete complete, body: The array closes the gap and keeps 30 and 40 in order., concept: Middle deletion used two shifts and one tail removal. }
+        effects:
+          - { op: status, component: array, status: done }
+          - { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 2, value: 25, shifts: 2, writes: 0, deletes: 1, operation: delete, moving: false } }
+          - { op: set, component: operation, data: { from: 2, to: 2, value: 25, shifts: 2, writes: 0, deletes: 1 } }
+          - { op: set, component: complexity, data: { insert: O(n), delete: O(n), space: O(1) } }
+          - { op: status, component: complexity, status: done }
+          - { op: log, text: "deleted index 2 after 2 shifts" }
+  - id: beginning-insert
+    name: Insert 5 at the beginning
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: SHIFT_RIGHT
+        payload: { from: 2, to: 3, value: 30 }
+        explanation: { title: Shift 30 right, body: Make room at the beginning by moving values from the end. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 30, state: moved }], index: 3, shifts: 1, writes: 0, deletes: 0, operation: insert } }]
+      - type: SHIFT_RIGHT
+        payload: { from: 1, to: 2, value: 20 }
+        explanation: { title: Shift 20 right, body: Continue backward so the next source cell remains safe. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 20, state: moved }, { value: 30, state: moved }], index: 2, shifts: 2, writes: 0, deletes: 0, operation: insert } }]
+      - type: SHIFT_RIGHT
+        payload: { from: 0, to: 1, value: 10 }
+        explanation: { title: Shift 10 right, body: The first cell is now open for the new value. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 10, state: moved }, { value: 20, state: moved }, { value: 30, state: moved }], index: 1, shifts: 3, writes: 0, deletes: 0, operation: insert } }]
+      - type: WRITE
+        payload: { index: 0, value: 5 }
+        explanation: { title: Write 5 at index 0, body: The beginning insertion completes after all three existing values move right. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 5, state: written }, { value: 10 }, { value: 20 }, { value: 30 }], index: 0, shifts: 3, writes: 1, deletes: 0, operation: insert } }]
+      - type: INSERT_COMPLETE
+        payload: { index: 0, value: 5 }
+        explanation: { title: Beginning insert complete, body: Inserting at index 0 required one shift for every existing cell. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [{ value: 5 }, { value: 10 }, { value: 20 }, { value: 30 }], shifts: 3, writes: 1, deletes: 0 } }, { op: set, component: operation, data: { from: 0, to: 0, value: 5, shifts: 3, writes: 1, deletes: 0 } }, { op: set, component: complexity, data: { insert: O(n), delete: O(n), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "inserted 5 at index 0 after 3 shifts" }]
+  - id: end-insert
+    name: Insert 50 at the end
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the array, body: The four existing values are ready for insertion at the next index. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 4, shifts: 0, writes: 0, deletes: 0, operation: insert } }]
+      - type: CHECK_BOUNDARY
+        source: array
+        duration: 300
+        explanation: { title: Check the tail boundary, body: Index 4 is immediately after the final live cell, so no values move. }
+        effects: [{ op: set, component: operation, data: { from: 4, to: 4, value: 50, shifts: 0, writes: 0, deletes: 0 } }]
+      - type: INSERT_READY
+        source: array
+        duration: 300
+        explanation: { title: Write at the end, body: The new value can be appended directly. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 4, shifts: 0, writes: 0, deletes: 0, operation: insert } }]
+      - type: WRITE
+        source: array
+        duration: 700
+        payload: { index: 4, value: 50 }
+        explanation: { title: Write 50 at index 4, body: Appending requires one write and zero shifts. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }, { value: 50, state: written }], index: 4, shifts: 0, writes: 1, deletes: 0, operation: insert } }]
+      - type: INSERT_COMPLETE
+        source: array
+        duration: 500
+        payload: { index: 4, value: 50 }
+        explanation: { title: End insert complete, body: The value was appended with constant-time movement cost., concept: End insertion is O(1) in this model. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }, { value: 50 }], shifts: 0, writes: 1, deletes: 0 } }, { op: set, component: operation, data: { from: 4, to: 4, value: 50, shifts: 0, writes: 1, deletes: 0 } }, { op: set, component: complexity, data: { insert: O(1), delete: O(n), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "inserted 50 at index 4 with 0 shifts" }]
+  - id: beginning-delete
+    name: Delete 10 at the beginning
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the array, body: The first value is selected for deletion. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 0, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: CHECK_BOUNDARY
+        source: array
+        duration: 300
+        explanation: { title: Check the beginning boundary, body: Deleting index 0 leaves a gap that later values must fill. }
+        effects: [{ op: set, component: operation, data: { from: 1, to: 0, value: 20, shifts: 0, writes: 0, deletes: 0 } }]
+      - type: DELETE_READY
+        source: array
+        duration: 300
+        explanation: { title: Move values toward the gap, body: Copy later cells left in increasing index order. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10, state: stale }, { value: 20 }, { value: 30 }, { value: 40 }], index: 0, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: SHIFT_LEFT
+        source: array
+        duration: 700
+        payload: { from: 1, to: 0, value: 20 }
+        explanation: { title: Move 20 left, body: Fill index 0 with the next value. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [{ value: 20, state: moved }, { value: 20 }, { value: 30 }, { value: 40 }], index: 0, shifts: 1, writes: 0, deletes: 0, operation: delete } }]
+      - type: SHIFT_LEFT
+        source: array
+        duration: 700
+        payload: { from: 2, to: 1, value: 30 }
+        explanation: { title: Move 30 left, body: Continue closing the gap from left to right. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 20, state: moved }, { value: 30, state: moved }, { value: 30 }, { value: 40 }], index: 1, shifts: 2, writes: 0, deletes: 0, operation: delete } }]
+      - type: SHIFT_LEFT
+        source: array
+        duration: 700
+        payload: { from: 3, to: 2, value: 40 }
+        explanation: { title: Move 40 left, body: The last live value moves into the final gap. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 20, state: moved }, { value: 30, state: moved }, { value: 40, state: moved }, { value: 40, state: stale }], index: 2, shifts: 3, writes: 0, deletes: 0, operation: delete } }]
+      - type: REMOVE_TAIL
+        source: array
+        duration: 700
+        payload: { index: 3, value: 40 }
+        explanation: { title: Remove stale tail, body: Remove the duplicated final cell after all three left shifts. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 20 }, { value: 30 }, { value: 40 }], index: 3, shifts: 3, writes: 0, deletes: 1, operation: delete } }]
+      - type: DELETE_COMPLETE
+        source: array
+        duration: 500
+        payload: { index: 0, value: 10 }
+        explanation: { title: Beginning delete complete, body: Deleting the first value required one shift for each later cell. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [{ value: 20 }, { value: 30 }, { value: 40 }], shifts: 3, writes: 0, deletes: 1 } }, { op: set, component: operation, data: { from: 0, to: 0, value: 10, shifts: 3, writes: 0, deletes: 1 } }, { op: set, component: complexity, data: { insert: O(n), delete: O(n), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "deleted 10 at index 0 after 3 shifts" }]
+  - id: end-delete
+    name: Delete the last value
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the array, body: The last value is selected for direct removal. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }], index: 2, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: CHECK_BOUNDARY
+        source: array
+        duration: 300
+        explanation: { title: Check the boundary, body: The target is already the final live index, so no shift is needed. }
+        effects: [{ op: set, component: operation, data: { from: 2, to: 2, value: 30, shifts: 0, writes: 0, deletes: 0 } }]
+      - type: DELETE_READY
+        source: array
+        duration: 300
+        explanation: { title: Remove directly, body: The tail can now be removed in one operation. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30, state: stale }], index: 2, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: REMOVE_TAIL
+        payload: { index: 2, value: 30 }
+        explanation: { title: Remove the tail, body: The last value can be removed directly because no later cells need to move. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }], index: 2, shifts: 0, writes: 0, deletes: 1, operation: delete } }]
+      - type: DELETE_COMPLETE
+        payload: { index: 2, value: 30 }
+        explanation: { title: End delete complete, body: Deleting the last element required no shifts., concept: End deletion is constant time in this model. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [{ value: 10 }, { value: 20 }], shifts: 0, writes: 0, deletes: 1 } }, { op: set, component: operation, data: { from: 2, to: 2, value: 30, shifts: 0, writes: 0, deletes: 1 } }, { op: set, component: complexity, data: { insert: O(n), delete: O(1), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "deleted tail value 30 with 0 shifts" }]
+  - id: empty-insert
+    name: Insert into an empty array
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the empty array, body: There are no cells to shift before the first write. }
+        effects: [{ op: set, component: array, data: { cells: [], index: 0, shifts: 0, writes: 0, deletes: 0, operation: insert } }]
+      - type: CHECK_BOUNDARY
+        source: array
+        duration: 300
+        explanation: { title: Check the empty boundary, body: Index 0 is the first available position in an empty array. }
+        effects: [{ op: set, component: operation, data: { from: 0, to: 0, value: 7, shifts: 0, writes: 0, deletes: 0 } }]
+      - type: INSERT_READY
+        source: array
+        duration: 300
+        explanation: { title: Write directly, body: The first value can be written without any movement. }
+        effects: [{ op: set, component: array, data: { cells: [], index: 0, shifts: 0, writes: 0, deletes: 0, operation: insert } }]
+      - type: WRITE
+        payload: { index: 0, value: 7 }
+        explanation: { title: Write the first value, body: An empty array has no existing cells to shift. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [{ value: 7, state: written }], index: 0, shifts: 0, writes: 1, deletes: 0, operation: insert } }]
+      - type: INSERT_COMPLETE
+        payload: { index: 0, value: 7 }
+        explanation: { title: Empty insert complete, body: The new single-element array is ready with zero shifts. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [{ value: 7 }], shifts: 0, writes: 1, deletes: 0 } }, { op: set, component: operation, data: { from: 0, to: 0, value: 7, shifts: 0, writes: 1, deletes: 0 } }, { op: set, component: complexity, data: { insert: O(1), delete: O(n), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "inserted 7 into empty array" }]
+  - id: single-delete
+    name: Delete the only element
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        source: array
+        duration: 300
+        explanation: { title: Prepare the single-element array, body: One value is ready to be removed. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 7 }], index: 0, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: CHECK_BOUNDARY
+        source: array
+        duration: 300
+        explanation: { title: Check the only index, body: The target is also the tail, so no values need to move. }
+        effects: [{ op: set, component: operation, data: { from: 0, to: 0, value: 7, shifts: 0, writes: 0, deletes: 0 } }]
+      - type: DELETE_READY
+        source: array
+        duration: 300
+        explanation: { title: Remove directly, body: Removing the only cell will leave an empty array. }
+        effects: [{ op: set, component: array, data: { cells: [{ value: 7, state: stale }], index: 0, shifts: 0, writes: 0, deletes: 0, operation: delete } }]
+      - type: REMOVE_TAIL
+        payload: { index: 0, value: 7 }
+        explanation: { title: Remove the only cell, body: A one-element array becomes empty without shifting anything. }
+        effects: [{ op: status, component: array, status: active }, { op: set, component: array, data: { cells: [], index: 0, shifts: 0, writes: 0, deletes: 1, operation: delete } }]
+      - type: DELETE_COMPLETE
+        payload: { index: 0, value: 7 }
+        explanation: { title: Single delete complete, body: The logical array is empty and the operation used zero shifts. }
+        effects: [{ op: status, component: array, status: done }, { op: set, component: array, data: { cells: [], shifts: 0, writes: 0, deletes: 1 } }, { op: set, component: operation, data: { from: 0, to: 0, value: 7, shifts: 0, writes: 0, deletes: 1 } }, { op: set, component: complexity, data: { insert: O(n), delete: O(1), space: O(1) } }, { op: status, component: complexity, status: done }, { op: log, text: "deleted the only element with 0 shifts" }]

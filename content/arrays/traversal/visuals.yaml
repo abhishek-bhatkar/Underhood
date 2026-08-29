@@ -1,0 +1,26 @@
+nodes:
+  - id: array
+    kind: array
+    label: Array
+    position: { x: 0, y: 0 }
+    size: { w: 720, h: 220 }
+    key: cells
+    itemTemplate: "$value"
+    pointerKey: index
+    handles:
+      - { id: out, type: source, pos: right }
+
+  - id: complexity
+    kind: panel
+    label: Complexity
+    position: { x: 0, y: 290 }
+    size: { w: 340, h: 180 }
+    lines:
+      - "indexed access · O(1)"
+      - "traversal time · O(n)"
+      - "extra space · O(1)"
+    handles:
+      - { id: in, type: target, pos: top }
+
+edges:
+  - { source: array, from: out, target: complexity, to: in }

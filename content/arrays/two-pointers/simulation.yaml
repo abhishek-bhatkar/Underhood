@@ -1,0 +1,98 @@
+scenarios:
+  - id: target-found
+    name: Find a target pair
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        explanation: { title: Set both pointers, body: The sorted values are ready for an inward search. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 1 }, { value: 2 }, { value: 4 }, { value: 6 }, { value: 8 }, { value: 9 }], left: 0, right: 5, target: 13, found: false } }
+          - { op: set, component: complexity, data: { time: O(n), space: O(1) } }
+      - type: COMPARE
+        payload: { left: 0, right: 5, sum: 10 }
+        explanation: { title: Move the left pointer, body: 1 + 9 is less than 13, so advance the left pointer to seek a larger sum. }
+        effects: [{ op: set, component: operation, data: { left: 0, right: 5, sum: 10, target: 13 } }]
+      - type: MOVE_LEFT
+        payload: { from: 0, to: 1 }
+        explanation: { title: Move left pointer, body: Advance the smaller side while keeping the largest value available on the right. }
+        effects: [{ op: set, component: array, data: { left: 1, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 1, right: 5, sum: 11 }
+        explanation: { title: Compare again, body: 2 + 9 is still less than 13, so the left pointer advances again. }
+        effects: [{ op: set, component: operation, data: { left: 1, right: 5, sum: 11, target: 13 } }]
+      - type: MOVE_LEFT
+        payload: { from: 1, to: 2 }
+        explanation: { title: Move left pointer again, body: The next left value can reach the target with the right value. }
+        effects: [{ op: set, component: array, data: { left: 2, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 2, right: 5, sum: 13 }
+        explanation: { title: Compare the candidate pair, body: 4 + 9 equals the target 13. }
+        effects: [{ op: set, component: operation, data: { left: 2, right: 5, sum: 13, target: 13 } }]
+      - type: TARGET_FOUND
+        explanation: { title: Target found, body: The pair at indexes 2 and 5 sums to 13., concept: Each pointer move preserves the possibility of finding the target. }
+        effects:
+          - { op: status, component: array, status: done }
+          - { op: set, component: array, data: { left: 2, right: 5, target: 13, found: true } }
+          - { op: set, component: operation, data: { left: 2, right: 5, sum: 13, target: 13, result: found } }
+          - { op: log, text: "found pair: indexes 2 and 5 sum to 13" }
+          - { op: status, component: complexity, status: done }
+  - id: target-not-found
+    name: Cross pointers without a match
+    components: [{ id: array }, { id: operation }, { id: complexity }]
+    events:
+      - type: ARRAY_READY
+        explanation: { title: Set both pointers, body: Search begins at the first and last cells for target 20. }
+        effects:
+          - { op: set, component: array, data: { cells: [{ value: 1 }, { value: 2 }, { value: 4 }, { value: 6 }, { value: 8 }, { value: 9 }], left: 0, right: 5, target: 20, found: false } }
+          - { op: set, component: complexity, data: { time: O(n), space: O(1) } }
+      - type: COMPARE
+        payload: { left: 0, right: 5, sum: 10 }
+        explanation: { title: Pair is too small, body: 1 + 9 is less than 20, so move the left pointer right. }
+        effects: [{ op: set, component: operation, data: { left: 0, right: 5, sum: 10, target: 20 } }]
+      - type: MOVE_LEFT
+        payload: { from: 0, to: 1 }
+        explanation: { title: Move left pointer, body: Increase the smaller side to get closer to the target. }
+        effects: [{ op: set, component: array, data: { left: 1, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 1, right: 5, sum: 11 }
+        explanation: { title: Pair is too small again, body: 2 + 9 is still less than 20, so advance the left pointer. }
+        effects: [{ op: set, component: operation, data: { left: 1, right: 5, sum: 11, target: 20 } }]
+      - type: MOVE_LEFT
+        payload: { from: 1, to: 2 }
+        explanation: { title: Advance left pointer, body: Continue inward through the sorted array. }
+        effects: [{ op: set, component: array, data: { left: 2, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 2, right: 5, sum: 13 }
+        explanation: { title: Pair is still too small, body: 4 + 9 is less than 20, so advance the left pointer again. }
+        effects: [{ op: set, component: operation, data: { left: 2, right: 5, sum: 13, target: 20 } }]
+      - type: MOVE_LEFT
+        payload: { from: 2, to: 3 }
+        explanation: { title: Advance left pointer again, body: The largest possible partner still cannot reach 20. }
+        effects: [{ op: set, component: array, data: { left: 3, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 3, right: 5, sum: 15 }
+        explanation: { title: Final candidate is too small, body: 6 + 9 is less than 20; moving left would cross the right boundary. }
+        effects: [{ op: set, component: operation, data: { left: 3, right: 5, sum: 15, target: 20 } }]
+      - type: MOVE_LEFT
+        payload: { from: 3, to: 4 }
+        explanation: { title: Advance left pointer again, body: The largest possible partner still cannot reach 20. }
+        effects: [{ op: set, component: array, data: { left: 4, right: 5 } }]
+      - type: COMPARE
+        payload: { left: 4, right: 5, sum: 17 }
+        explanation: { title: Check the last distinct pair, body: 8 + 9 is still less than 20. }
+        effects: [{ op: set, component: operation, data: { left: 4, right: 5, sum: 17, target: 20 } }]
+      - type: MOVE_LEFT
+        payload: { from: 4, to: 5 }
+        explanation: { title: Pointers meet, body: Once both pointers reach index 5 there is no distinct pair left to inspect. }
+        effects: [{ op: set, component: array, data: { left: 5, right: 5 } }]
+      - type: POINTERS_MET
+        explanation: { title: Search boundary reached, body: The pointers meet, so the remaining search space is empty. }
+        effects: [{ op: log, text: "pointers met at index 5" }]
+      - type: TARGET_NOT_FOUND
+        explanation: { title: Target not found, body: left is greater than right, so every candidate pair has been ruled out. }
+        effects:
+          - { op: status, component: array, status: done }
+          - { op: set, component: array, data: { left: 5, right: 5, target: 20, found: false } }
+          - { op: set, component: operation, data: { left: 5, right: 5, result: not found } }
+          - { op: log, text: "no pair sums to 20" }
+          - { op: status, component: complexity, status: done }

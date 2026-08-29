@@ -1,0 +1,30 @@
+concepts:
+  suffix:
+    name: Best ending suffix
+    summary: At each cell, keep the strongest contiguous subarray that ends at that cell.
+    fields:
+      - { key: currentSum, label: current suffix sum }
+      - { key: currentStart, label: current start }
+      - { key: index, label: current index }
+    details:
+      - Adding a value extends the current suffix; restarting drops a negative prefix.
+      - The best ending suffix is enough because every future subarray must end somewhere later.
+  winner:
+    name: Global winner
+    summary: Compare each ending suffix with the best subarray seen so far.
+    fields:
+      - { key: bestSum, label: best sum }
+      - { key: bestStart, label: best start }
+      - { key: bestEnd, label: best end }
+    details:
+      - Update the global winner whenever the current suffix is larger.
+      - Starting from the first element preserves the non-empty maximum when all values are negative.
+  complexity:
+    name: Kadane complexity
+    summary: One pass and a fixed set of candidate indexes find the winner.
+    fields:
+      - { key: time, label: time }
+      - { key: space, label: extra space }
+    details:
+      - Each value is considered once, so time is O(n).
+      - Only scalar candidate state is retained, so extra space is O(1).

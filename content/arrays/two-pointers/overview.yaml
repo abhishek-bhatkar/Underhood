@@ -1,0 +1,3 @@
+title: How do two pointers converge on a sorted array?
+summary: Move a left and right pointer inward, discarding one impossible side after each comparison.
+abstraction: This model assumes ascending input so the sum comparison identifies which pointer can move safely.

@@ -1,0 +1,22 @@
+concepts:
+  construction:
+    name: Prefix construction
+    summary: Each prefix stores the sum of all input values before its index.
+    fields:
+      - { key: values, label: prefix values, list: true }
+      - { key: index, label: source index }
+      - { key: running, label: running sum }
+    details:
+      - Prefix[0] is zero, and prefix[i + 1] equals prefix[i] plus array[i].
+      - One pass builds n plus one prefix values in O(n) time.
+  range-query:
+    name: Range subtraction
+    summary: A half-open range sum is prefix[right + 1] minus prefix[left].
+    fields:
+      - { key: left, label: left bound }
+      - { key: right, label: right bound }
+      - { key: sum, label: range sum }
+    details:
+      - Subtracting the prefix before the left bound removes values outside the query.
+      - A full-range query subtracts prefix[0] from the final prefix, so its answer is the total.
+      - Each query is O(1) after the O(n) build, at the cost of O(n) extra space.

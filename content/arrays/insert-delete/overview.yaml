@@ -1,0 +1,3 @@
+title: How do array insertions and deletions move elements?
+summary: Watch indexed updates shift contiguous values before a new value is written or an old value is removed.
+abstraction: This model uses a resizable logical array and shows the cell movements explicitly; allocation and capacity growth are omitted.

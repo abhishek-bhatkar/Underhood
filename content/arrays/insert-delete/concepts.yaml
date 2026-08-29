@@ -1,0 +1,35 @@
+concepts:
+  shifting:
+    name: Contiguous shifting
+    summary: Values move one cell at a time to preserve order around an insertion or deletion.
+    fields:
+      - { key: cells, label: cells, list: true }
+      - { key: from, label: source index }
+      - { key: to, label: destination index }
+      - { key: shifts, label: shifts }
+    details:
+      - A middle insertion shifts from the end toward the target so values are not overwritten.
+      - A middle deletion shifts later values toward the gap, then removes the stale tail cell.
+      - Beginning operations touch every existing value; end operations need no shifts.
+  writes-and-removes:
+    name: Writes and removals
+    summary: The target cell is written after insertion shifts, while deletion removes the final stale cell after left shifts.
+    fields:
+      - { key: value, label: inserted value }
+      - { key: writes, label: writes }
+      - { key: deletes, label: deletes }
+    details:
+      - Inserting one value performs one write after the required shifts.
+      - Deleting one value performs one tail removal after the required shifts.
+      - The empty and single-element cases make the boundary behavior explicit.
+  complexity:
+    name: Update complexity
+    summary: Indexed access is direct, but preserving contiguous order can require moving many values.
+    fields:
+      - { key: insert, label: insertion time }
+      - { key: delete, label: deletion time }
+      - { key: space, label: extra space }
+    details:
+      - Beginning and middle insertion or deletion are O(n) in the number of shifted values.
+      - End insertion or deletion is O(1) in this logical model.
+      - Shifting happens in place, so extra space is O(1).

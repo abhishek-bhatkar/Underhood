@@ -1,0 +1,29 @@
+concepts:
+  convergence:
+    name: Pointer convergence
+    summary: Two indexes search a sorted array from opposite ends until they meet or cross.
+    fields:
+      - { key: cells, label: cells, list: true }
+      - { key: left, label: left pointer }
+      - { key: right, label: right pointer }
+      - { key: target, label: target }
+    details:
+      - If the current pair is too small, moving left rightward is the only move that can increase the sum.
+      - If the current pair is too large, moving right leftward is the only move that can decrease the sum.
+      - The search ends with a match or when left is greater than right.
+  invariant:
+    name: Search invariant
+    summary: Every discarded pair cannot contain the target under the sorted-order assumption.
+    details:
+      - Each comparison eliminates at least one pointer position.
+      - The pointers never move backward, so the search takes O(n) time.
+      - The input is searched in place with O(1) extra space.
+  complexity:
+    name: Two-pointer complexity
+    summary: Opposing pointers make one linear pass with constant auxiliary state.
+    fields:
+      - { key: time, label: time }
+      - { key: space, label: extra space }
+    details:
+      - At most n pointer moves occur across the whole search.
+      - The algorithm uses O(1) extra space.

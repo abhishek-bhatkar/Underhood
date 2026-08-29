@@ -16,27 +16,41 @@ const chipSchema = z.object({
   variant: z.string().optional(),
 });
 
-const nodeKindSchema = z.enum(['terminal', 'panel', 'stack', 'list', 'group']);
+const nodeKindSchema = z.enum(['terminal', 'panel', 'stack', 'list', 'group', 'array']);
 
-const nodeVisualSchema = z.object({
-  id: z.string().min(1),
-  kind: nodeKindSchema,
-  position: z.object({ x: z.number(), y: z.number() }),
-  size: z.object({ w: z.number().positive(), h: z.number().positive() }),
-  parent: z.string().optional(),
-  label: z.string().optional(),
-  lines: z.array(z.string()).optional(),
-  key: z.string().optional(),
-  slots: z.number().int().nonnegative().optional(),
-  emptyLabel: z.string().optional(),
-  itemTemplate: z.string().optional(),
-  subTemplate: z.string().optional(),
-  variantKey: z.string().optional(),
-  absentLabel: z.string().optional(),
-  chips: z.array(chipSchema).optional(),
-  footerKey: z.string().optional(),
-  handles: z.array(handleSchema).optional(),
-});
+const nodeVisualSchema = z
+  .object({
+    id: z.string().min(1),
+    kind: nodeKindSchema,
+    position: z.object({ x: z.number(), y: z.number() }),
+    size: z.object({ w: z.number().positive(), h: z.number().positive() }),
+    parent: z.string().optional(),
+    label: z.string().optional(),
+    lines: z.array(z.string()).optional(),
+    key: z.string().optional(),
+    slots: z.number().int().nonnegative().optional(),
+    emptyLabel: z.string().optional(),
+    itemTemplate: z.string().optional(),
+    subTemplate: z.string().optional(),
+    pointerKey: z.string().optional(),
+    rangeKey: z.string().optional(),
+    pointerKeys: z.array(z.string().min(1)).optional(),
+    rangeKeys: z.array(z.string().min(1)).optional(),
+    variantKey: z.string().optional(),
+    absentLabel: z.string().optional(),
+    chips: z.array(chipSchema).optional(),
+    footerKey: z.string().optional(),
+    handles: z.array(handleSchema).optional(),
+  })
+  .superRefine((node, ctx) => {
+    if (node.kind === 'array' && !node.key) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['key'],
+        message: 'array nodes require a data key',
+      });
+    }
+  });
 
 const edgeVisualSchema = z.object({
   source: z.string().min(1),

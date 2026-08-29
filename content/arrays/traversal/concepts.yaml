@@ -1,0 +1,24 @@
+concepts:
+  array:
+    name: Array cells
+    summary: A contiguous sequence of values addressed by zero-based index.
+    fields:
+      - { key: cells, label: cells, list: true }
+      - { key: index, label: current index }
+      - { key: value, label: current value }
+      - { key: operations, label: reads }
+    details:
+      - The index identifies the position; the value is the data stored at that position.
+      - Indexed access is O(1) because the address is calculated directly from the index.
+      - A complete traversal performs one read per element, so its time is O(n).
+  complexity:
+    name: Traversal complexity
+    summary: The algorithm uses constant extra state while visiting every cell.
+    fields:
+      - { key: access, label: indexed access }
+      - { key: time, label: traversal time }
+      - { key: space, label: extra space }
+    details:
+      - The index and current value are the only live algorithm variables.
+      - The input array is read in place; no second array is required.
+      - The overall complexity is O(1) access, O(n) time, and O(1) space.
