@@ -1,7 +1,7 @@
 scenarios:
   - id: middle-insert
     name: Insert 25 at index 2
-    components: [{ id: array }, { id: operation }, { id: complexity }]
+    components: [{ id: array, data: { cells: [{ value: 10 }, { value: 20 }, { value: 30 }, { value: 40 }], index: 2, shifts: 0, writes: 0, deletes: 0, operation: insert } }, { id: operation }, { id: complexity }]
     events:
       - type: ARRAY_READY
         source: array

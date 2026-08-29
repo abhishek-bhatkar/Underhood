@@ -21,6 +21,14 @@ describe('deriveState (declarative effects)', () => {
     expect(s.components['no-such']).toBeUndefined();
   });
 
+  it('preserves declarative component data before the first event', () => {
+    const state = deriveState([], -1, [
+      { id: 'array', data: { cells: [{ value: 10 }, { value: 20 }] } },
+    ]);
+
+    expect(state.components.array.data.cells).toEqual([{ value: 10 }, { value: 20 }]);
+  });
+
   it('status/label/set/log effects mutate the named component', () => {
     const events = [
       makeEvent(0, 'COMMAND_ENTERED', {

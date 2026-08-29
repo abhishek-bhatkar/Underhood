@@ -1,6 +1,6 @@
 import type { NodeProps } from '@xyflow/react';
 import { NodeShell } from './NodeShell';
-import { Chips, type SimNodeData } from './shared';
+import { Chips, runtimeText, type SimNodeData } from './shared';
 
 /** Panel: a titled component with fixed descriptive lines and optional chips. */
 export function PanelNode(props: NodeProps) {
@@ -10,7 +10,7 @@ export function PanelNode(props: NodeProps) {
       <div className="term-body">
         {(config.lines ?? []).map((line) => (
           <div key={line} className="out">
-            {line}
+            {runtimeText(line, runtime)}
           </div>
         ))}
       </div>

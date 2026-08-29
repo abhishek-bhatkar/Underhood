@@ -1,3 +1,3 @@
-title: How does an array traversal read each element?
+title: Read an array from start to finish
 summary: Follow an index from the first cell to one past the end while every indexed read becomes a visible state transition.
 abstraction: This model treats the array as contiguous indexed cells and focuses on the access pattern rather than language-specific iterator syntax.
